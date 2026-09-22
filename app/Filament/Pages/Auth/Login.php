@@ -6,6 +6,7 @@ use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Illuminate\Validation\ValidationException;
+use Filament\Notifications\Notification;
 
 class Login extends BaseLogin
 {
@@ -28,6 +29,7 @@ class Login extends BaseLogin
     {
         return [
             'usuario' => $data['usuario'],
+            'activo' => true,
             'password' => $data['password'],
         ];
     }
@@ -38,7 +40,19 @@ class Login extends BaseLogin
     protected function throwFailureValidationException(): never
     {
         throw ValidationException::withMessages([
-            'data.usuario' => 'Las credenciales proporcionadas no son válidas.',
+            'data.usuario' => 'Las credenciales proporcionadas no son válidas, puede comunicarse con el administrador del sistema.',
         ]);
+    }
+
+    public function mount(): void
+    {
+        parent::mount();
+        if (session()->has('error')) {
+            Notification::make()
+                ->danger()
+                ->title('Acceso denegado')
+                ->body(session()->pull('error'))
+                ->send();
+        }
     }
 }
