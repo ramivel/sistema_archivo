@@ -2,15 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\Parametro;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class ParametrosSeeder extends Seeder
 {
     public function run(): void
     {
-        $fecha = now();
-
         // Usuario que realiza la carga inicial
         $usuarioCreacionId = 1;
 
@@ -372,21 +370,16 @@ class ParametrosSeeder extends Seeder
         ];
 
         foreach ($parametros as $parametro) {
-            DB::table('parametros')->updateOrInsert(
-                [
-                    'grupo' => $parametro['grupo'],
-                    'valor' => $parametro['valor'],
-                ],
-                [
-                    'sigla' => $parametro['sigla'] ?? null,
-                    'descripcion' => $parametro['descripcion'] ?? null,
-                    'ubicacion' => $parametro['ubicacion'] ?? null,
-                    'padre_id' => $parametro['padre_id'] ?? null,
-                    'orden' => $parametro['orden'] ?? 0,
-                    'usuario_creacion_id' => $usuarioCreacionId,
-                    'fecha_creacion' => $fecha,
-                ]
-            );
+            Parametro::create([
+                'grupo' => $parametro['grupo'],
+                'valor' => $parametro['valor'],
+                'sigla' => $parametro['sigla'] ?? null,
+                'descripcion' => $parametro['descripcion'] ?? null,
+                'ubicacion' => $parametro['ubicacion'] ?? null,
+                'padre_id' => $parametro['padre_id'] ?? null,
+                'orden' => $parametro['orden'] ?? 0,
+                'usuario_creacion_id' => $usuarioCreacionId,
+            ]);
         }
     }
 }
