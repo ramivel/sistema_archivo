@@ -155,7 +155,8 @@ class SubfondosTable
                     )
                     ->requiresConfirmation()
                     ->modalHeading(
-                        $fondo->valor . ' / Activar Sub Fondo'
+                        fn (Parametro $record): string =>
+                            'Activar Sub Fondo / ' . $record->valor
                     )
                     ->modalDescription(
                         '¿Está seguro de activar este sub fondo?'
@@ -185,7 +186,8 @@ class SubfondosTable
                     )
                     ->requiresConfirmation()
                     ->modalHeading(
-                        $fondo->valor . ' / Desactivar Sub Fondo'
+                        fn (Parametro $record): string =>
+                            'Desactivar Sub Fondo / ' . $record->valor
                     )
                     ->modalDescription(
                         '¿Está seguro de desactivar este sub fondo?'
@@ -210,7 +212,8 @@ class SubfondosTable
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
                     ->modalHeading(
-                        $fondo->valor . ' / Eliminar Sub Fondo'
+                        fn (Parametro $record): string =>
+                            'Eliminar Sub Fondo / ' . $record->valor
                     )
                     ->modalDescription(
                         '¿Está seguro de eliminar este sub fondo?'

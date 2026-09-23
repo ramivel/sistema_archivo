@@ -59,7 +59,7 @@ class ProcedenciasTable
                             return Parametro::create([
                                 'grupo' => ProcedenciaResource::getGrupo(),
                                 'valor' => $data['valor'],
-                                'sigla' => $data['sigla'],                                
+                                'sigla' => $data['sigla'],
                                 'usuario_creacion_id' => Auth::id(),
                             ]);
                         }
@@ -109,7 +109,7 @@ class ProcedenciasTable
                                 'valor' => $data['valor'],
                                 'sigla' => $data['sigla'],
                                 'usuario_actualizacion_id' => Auth::id(),
-                            ]);                        
+                            ]);
                             return $record;
                         }
                     )
@@ -130,7 +130,10 @@ class ProcedenciasTable
                         fn (Parametro $record): bool => ! $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Activar procedencia')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Activar Procedencia / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de activar esta procedencia?'
                     )
@@ -161,7 +164,10 @@ class ProcedenciasTable
                         fn (Parametro $record): bool => $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar procedencia')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Desactivar Procedencia / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de desactivar esta procedencia?'
                     )
@@ -188,7 +194,10 @@ class ProcedenciasTable
                     ->label('Eliminar')
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
-                    ->modalHeading('Eliminar procedencia')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Eliminar Procedencia / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de eliminar esta procedencia?'
                     )
@@ -199,7 +208,6 @@ class ProcedenciasTable
                             $record->update([
                                 'usuario_eliminacion_id' => Auth::id(),
                             ]);
-
                             $record->delete();
                         }
                     )

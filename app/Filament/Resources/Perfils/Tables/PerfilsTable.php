@@ -133,7 +133,10 @@ class PerfilsTable
                         fn (Parametro $record): bool => ! $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Activar perfil')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Activar Perfil / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de activar este perfil?'
                     )
@@ -164,7 +167,10 @@ class PerfilsTable
                         fn (Parametro $record): bool => $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar perfil')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Desactivar Perfil / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de desactivar este perfil?'
                     )
@@ -191,7 +197,10 @@ class PerfilsTable
                     ->label('Eliminar')
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
-                    ->modalHeading('Eliminar perfil')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Eliminar Perfil / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de eliminar este perfil?'
                     )

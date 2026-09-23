@@ -113,7 +113,10 @@ class SerieDocumentalsTable
                     ->color('success')
                     ->visible(fn (Parametro $record): bool => ! $record->activo)
                     ->requiresConfirmation()
-                    ->modalHeading('Activar serie documental')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Activar Serie Documental / ' . $record->valor
+                    )
                     ->modalDescription('¿Está seguro de activar esta serie documental?')
                     ->modalSubmitActionLabel('Activar')
                     ->modalCancelActionLabel('Cancelar')
@@ -136,7 +139,10 @@ class SerieDocumentalsTable
                     ->color('warning')
                     ->visible(fn (Parametro $record): bool => $record->activo)
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar serie documental')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Desactivar Serie Documental / ' . $record->valor
+                    )
                     ->modalDescription('¿Está seguro de desactivar esta serie documental?')
                     ->modalSubmitActionLabel('Desactivar')
                     ->modalCancelActionLabel('Cancelar')
@@ -157,7 +163,10 @@ class SerieDocumentalsTable
                     ->label('Eliminar')
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
-                    ->modalHeading('Eliminar serie documental')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Eliminar Serie Documental / ' . $record->valor
+                    )
                     ->modalDescription('¿Está seguro de eliminar esta serie documental?')
                     ->modalSubmitActionLabel('Eliminar')
                     ->modalCancelActionLabel('Cancelar')

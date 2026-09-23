@@ -148,7 +148,10 @@ class FondosTable
                             ! $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Activar Fondo')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Activar Fondo / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de activar este fondo?'
                     )
@@ -176,7 +179,10 @@ class FondosTable
                             $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Fondo')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Desactivar Fondo / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de desactivar este fondo?'
                     )
@@ -199,9 +205,9 @@ class FondosTable
                     ->label('Eliminar')
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
-                    ->modalHeading('Eliminar Fondo')
-                    ->modalDescription(
-                        '¿Está seguro de eliminar este fondo?'
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Eliminar Fondo / ' . $record->valor
                     )
                     ->modalSubmitActionLabel('Eliminar')
                     ->modalCancelActionLabel('Cancelar')

@@ -134,7 +134,10 @@ class SoportesTable
                         fn (Parametro $record): bool => ! $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Activar soporte')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Activar Soporte / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de activar este soporte?'
                     )
@@ -165,7 +168,10 @@ class SoportesTable
                         fn (Parametro $record): bool => $record->activo
                     )
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar soporte')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Desactivar Soporte / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de desactivar este soporte?'
                     )
@@ -187,12 +193,15 @@ class SoportesTable
                                 'El soporte fue desactivado correctamente.'
                             )
                     ),
-                
+
                 DeleteAction::make()
                     ->label('Eliminar')
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
-                    ->modalHeading('Eliminar soporte')
+                    ->modalHeading(
+                        fn (Parametro $record): string =>
+                            'Eliminar Soporte / ' . $record->valor
+                    )
                     ->modalDescription(
                         '¿Está seguro de eliminar este soporte?'
                     )
