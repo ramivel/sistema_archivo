@@ -162,6 +162,9 @@ class SerieDocumentalsTable
                     ->modalSubmitActionLabel('Eliminar')
                     ->modalCancelActionLabel('Cancelar')
                     ->using(function (Parametro $record): void {
+                        $record->update([
+                            'usuario_eliminacion_id' => Auth::id(),
+                        ]);
                         $record->delete();
                     })
                     ->successNotification(
