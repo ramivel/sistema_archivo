@@ -25,7 +25,6 @@ return new class extends Migration
             $table->string('usuario', 50);
             $table->string('password', 255);
             $table->rememberToken();
-            $table->unsignedBigInteger('perfil_parametro_id');
             $table->boolean('activo')->default(true);
             $table->timestamp('ultimo_acceso')->nullable();
             $table->unsignedBigInteger('usuario_creacion_id');
@@ -53,9 +52,6 @@ return new class extends Migration
             $table->foreign('area_parametro_id', 'fk_usuario_area')
                 ->references('id')
                 ->on('parametros');
-            $table->foreign('perfil_parametro_id', 'fk_usuario_perfil')
-                ->references('id')
-                ->on('parametros');
             $table->foreign('usuario_creacion_id', 'fk_usuario_creacion')
                 ->references('id')
                 ->on('usuarios');
@@ -65,6 +61,23 @@ return new class extends Migration
             $table->foreign('usuario_eliminacion_id', 'fk_usuario_eliminacion')
                 ->references('id')
                 ->on('usuarios');
+        });
+
+        Schema::create('usuario_perfiles', function (Blueprint $table) {
+            $table->unsignedBigInteger('usuario_id');
+            $table->unsignedBigInteger('perfil_parametro_id');
+
+            $table->primary(
+                ['usuario_id','perfil_parametro_id'],
+                'pk_usuario_perfiles'
+            );
+            $table->foreign('usuario_id','fk_usuario_perfiles_usuario')
+                ->references('id')
+                ->on('usuarios')
+                ->cascadeOnDelete();
+            $table->foreign('perfil_parametro_id','fk_usuario_perfiles_perfil')
+                ->references('id')
+                ->on('parametros');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -86,8 +99,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('usuarios');
-        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('usuario_perfiles');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('usuarios');
     }
 };

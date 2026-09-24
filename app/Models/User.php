@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -26,7 +27,6 @@ use Illuminate\Notifications\Notifiable;
     'telefonos',
     'usuario',
     'password',
-    'perfil_parametro_id',
     'activo',
     'ultimo_acceso',
     'usuario_creacion_id',
@@ -108,12 +108,17 @@ class User extends Authenticatable implements HasName
             'area_parametro_id'
         );
     }
-    public function perfil(): BelongsTo
+    public function perfiles(): BelongsToMany
     {
-        return $this->belongsTo(
+        return $this->belongsToMany(
             Parametro::class,
+            'usuario_perfiles',
+            'usuario_id',
             'perfil_parametro_id'
-        );
+        )
+            ->where('parametros.grupo', 'PERFIL')
+            ->where('parametros.activo', true)
+            ->orderBy('parametros.orden');
     }
     public function usuarioCreacion(): BelongsTo
     {

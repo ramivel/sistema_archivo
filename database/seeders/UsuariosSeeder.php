@@ -45,7 +45,7 @@ class UsuariosSeeder extends Seeder
         }
         $oficinaParametroId = 1;
         $direccionParametroId = 2;
-        $areaParametroId = 3;
+        $areaParametroId = 4;
         $perfilParametroId = DB::table('parametros')
             ->where('grupo', 'PERFIL')
             ->where('valor', 'ADMINISTRADOR')
@@ -78,7 +78,7 @@ class UsuariosSeeder extends Seeder
             if ($usuarioExistente) {
                 return;
             }
-            User::create([
+            $nuevoUsuario = User::create([
                 'nombres' => $nombres,
                 'apellidos' => $apellidos,
                 'documento_identidad' => $documento,
@@ -89,8 +89,11 @@ class UsuariosSeeder extends Seeder
                 'email' => $email,
                 'usuario' => $usuario,
                 'password' => $password,
-                'perfil_parametro_id' => $perfilParametroId,
                 'usuario_creacion_id' => $usuarioCreacionId,
+            ]);
+            DB::table('usuario_perfiles')->insert([
+                'usuario_id' => $nuevoUsuario->id,
+                'perfil_parametro_id' => $perfilParametroId,
             ]);
         });
     }
