@@ -15,6 +15,11 @@ class ListTransferencias extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('plantilla')
+                ->label('PLANTILLA TRANSFERENCIA EXCEL')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->url(route('transferencias.plantilla-excel')),
             Action::make('regularizar')
                 ->label('REGULARIZAR INVENTARIO')
                 ->icon('heroicon-o-clipboard-document-list')
