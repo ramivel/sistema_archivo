@@ -328,6 +328,12 @@ class ParametrosSeeder extends Seeder
                 'descripcion' => 'DOCUMENTACIÓN RELACIONADA CON OBLIGACIONES, DECLARACIONES Y TRÁMITES TRIBUTARIOS INSTITUCIONALES.',
                 'orden' => 18,
             ],
+            [
+                'grupo' => 'SERIE_DOCUMENTAL',
+                'valor' => 'COLECCIÓN BIBLIOGRÁFICA',
+                'descripcion' => 'DOCUMENTACIÓN QUE HACE REFERENCIA A LA COLECCION BIBLIOGRÁFICA.',
+                'orden' => 19,
+            ],
             // =====================================================
             // 8. SOPORTES
             // =====================================================
@@ -366,6 +372,57 @@ class ParametrosSeeder extends Seeder
                 'valor' => 'CUADERNO',
                 'descripcion' => 'CONJUNTO DE HOJAS UNIDAS QUE CONTIENEN INFORMACIÓN O REGISTROS DOCUMENTALES.',
                 'orden' => 6,
+            ],
+            // =====================================================
+            // 9. ESTADO TRANSFERENCIA
+            // =====================================================
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'INICIADO',
+                'descripcion' => 'ESTADO CUANDO SE REGISTRA Y ENVÍA UNA NUEVA SOLICITUD DE TRANSFERENCIA.',
+                'orden' => 1,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'OBSERVADO',
+                'descripcion' => 'ESTADO CUANDO EL USUARIO ENCARGADO ARCHIVO REVISA LA TRANSFERENCIA Y REGISTRA OBSERVACIONES QUE DEBEN SER CORREGIDAS.',
+                'orden' => 2,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'CORREGIDO',
+                'descripcion' => 'ESTADO CUANDO EL USUARIO SOLICITANTE REALIZA LAS CORRECCIONES SOLICITADAS Y VUELVE A ENVIAR LA TRANSFERENCIA.',
+                'orden' => 3,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'APROBADO',
+                'descripcion' => 'ESTADO CUANDO EL USUARIO ENCARGADO ARCHIVO APRUEBA LA TRANSFERENCIA.',
+                'orden' => 4,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'RECHAZADO',
+                'descripcion' => 'ESTADO CUANDO EL USUARIO ENCARGADO ARCHIVO RECHAZA LA TRANSFERENCIA.',
+                'orden' => 5,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'SOLICITUD DE ANULACIÓN',
+                'descripcion' => 'ESTADO CUANDO EL USUARIO SOLICITANTE SOLICITA LA ANULACIÓN DE UNA TRANSFERENCIA.',
+                'orden' => 6,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'ANULADO',
+                'descripcion' => 'ESTADO CUANDO EL USUARIO ENCARGADO ARCHIVO APRUEBA UNA SOLICITUD DE ANULACIÓN.',
+                'orden' => 7,
+            ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'FINALIZADO',
+                'descripcion' => 'ESTADO GENERADO CUANDO EL USUARIO ENCARGADO ARCHIVO RECIBE Y VALIDA EL FORMULARIO DE TRANSFERENCIA Y LOS EXPEDIENTES FÍSICOS. REPRESENTA LA CONCLUSIÓN DEL PROCESO DE TRANSFERENCIA. POSTERIORMENTE, LA INFORMACIÓN PASARÁ AL INVENTARIO DEL SISTEMA.',
+                'orden' => 8,
             ],
         ];
 
