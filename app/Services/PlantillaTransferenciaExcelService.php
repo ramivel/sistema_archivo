@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Parametro;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -21,6 +23,10 @@ class PlantillaTransferenciaExcelService
             );
         }
         $spreadsheet = IOFactory::load($rutaPlantilla);
+        $usuario = User::find(Auth::id());
+        if ($usuario) {
+            $this->reemplazarUbicacionUsuario($spreadsheet, $usuario);
+        }
         $this->crearHojaParametrica($spreadsheet);
         $rutaTemporal = storage_path('app/private/transferencias/plantillas/plantilla_transferencia.xlsx');
         $directorio = dirname($rutaTemporal);
@@ -30,6 +36,37 @@ class PlantillaTransferenciaExcelService
         $writer = new Xlsx($spreadsheet);
         $writer->save($rutaTemporal);
         return $rutaTemporal;
+    }
+
+    private function reemplazarUbicacionUsuario(Spreadsheet $spreadsheet, User $usuario): void
+    {
+        $hoja = $spreadsheet->getSheetByName('TRANSFERENCIA');
+        if (! $hoja) {
+            throw new \RuntimeException(
+                'La plantilla de transferencia Excel debe contener una hoja llamada "TRANSFERENCIA".'
+            );
+        }
+        $fondo = Parametro::query()
+            ->whereKey($usuario->oficina_parametro_id)
+            ->where('grupo', 'FONDO')
+            ->where('activo', true)
+            ->whereNull('fecha_eliminacion')
+            ->first();
+        $subfondo = Parametro::query()
+            ->whereKey($usuario->direccion_parametro_id)
+            ->where('grupo', 'SUBFONDO')
+            ->where('activo', true)
+            ->whereNull('fecha_eliminacion')
+            ->first();
+        $seccion = Parametro::query()
+            ->whereKey($usuario->area_parametro_id)
+            ->where('grupo', 'SECCION')
+            ->where('activo', true)
+            ->whereNull('fecha_eliminacion')
+            ->first();
+        $hoja->setCellValue('C1', $fondo?->valor);
+        $hoja->setCellValue('C2', $subfondo?->valor);
+        $hoja->setCellValue('C3', $seccion?->valor);
     }
 
     private function crearHojaParametrica(Spreadsheet $spreadsheet): void {
