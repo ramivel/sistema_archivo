@@ -136,7 +136,7 @@ class TransferenciaExcelService
         Worksheet $sheet,
         string $fondo,
         string $subfondo,
-        string $seccion,
+        ?string $seccion,
         array &$resultado
     ): void {
         $excelFondo = $this->normalizar(

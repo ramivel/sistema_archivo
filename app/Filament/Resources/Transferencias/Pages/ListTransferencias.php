@@ -20,6 +20,13 @@ class ListTransferencias extends ListRecords
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('gray')
                 ->url(route('transferencias.plantilla-excel')),
+            Action::make('nuevaTransferencia')
+                ->label('NUEVA TRANSFERENCIA')
+                ->icon('heroicon-o-plus')
+                ->color('primary')
+                ->url(
+                    fn (): string => TransferenciaResource::getUrl('create')
+                ),
             Action::make('regularizar')
                 ->label('REGULARIZAR INVENTARIO')
                 ->icon('heroicon-o-clipboard-document-list')

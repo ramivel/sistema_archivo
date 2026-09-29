@@ -3,9 +3,10 @@
 namespace App\Filament\Resources\Transferencias\Pages;
 
 use App\Filament\Resources\Transferencias\TransferenciaResource;
+use App\Models\Parametro;
+use App\Models\User;
 use App\Services\TransferenciaExcelService;
 use App\Services\TransferenciaService;
-use App\Models\Parametro;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -15,13 +16,14 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
-class RegularizarInventario extends Page
+class CrearTransferencia extends Page
 {
     protected static string $resource = TransferenciaResource::class;
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
-    protected string $view = 'filament.resources.transferencias.pages.regularizar-inventario';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-up-tray';
+    protected string $view = 'filament.resources.transferencias.pages.crear-transferencia';
     public ?array $data = [];
     public bool $archivoValidado = false;
     public ?array $resultadoValidacion = null;
@@ -29,36 +31,48 @@ class RegularizarInventario extends Page
 
     public function mount(): void
     {
+        $usuario = User::find(Auth::id());
+        if ($this->esTransferencias()) {
+            $this->form->fill([
+                'fondo_parametro_id' => $usuario?->oficina_parametro_id,
+                'subfondo_parametro_id' => $usuario?->direccion_parametro_id,
+                'seccion_parametro_id' => $usuario?->area_parametro_id,
+            ]);
+            return;
+        }
         $this->form->fill();
     }
 
     public function getTitle(): string
     {
-        return 'Regularizar Inventario';
+        return 'Nueva Transferencia';
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Datos de la regularización')
+                Section::make('Datos de la transferencia')
                     ->description('Los campos marcados con * son obligatorios.')
                     ->schema([
                         Select::make('fondo_parametro_id')
                             ->label('Fondo')
                             ->required()
                             ->placeholder('Seleccione una opción')
-                            ->options(fn (): array => Parametro::query()
-                                ->where('grupo', 'FONDO')
-                                ->where('activo', true)
-                                ->whereNull('fecha_eliminacion')
-                                ->orderBy('valor')
-                                ->pluck('valor', 'id')
-                                ->toArray()
+                            ->options(
+                                fn (): array => Parametro::query()
+                                    ->where('grupo', 'FONDO')
+                                    ->where('activo', true)
+                                    ->whereNull('fecha_eliminacion')
+                                    ->orderBy('valor')
+                                    ->pluck('valor', 'id')
+                                    ->toArray()
                             )
                             ->searchable()
                             ->preload()
                             ->live()
+                            ->disabled(fn (): bool => $this->esTransferencias())
+                            ->dehydrated()
                             ->afterStateUpdated(
                                 function (Set $set): void {
                                     $set('subfondo_parametro_id', null);
@@ -88,6 +102,8 @@ class RegularizarInventario extends Page
                             ->searchable()
                             ->preload()
                             ->live()
+                            ->disabled(fn (): bool => $this->esTransferencias())
+                            ->dehydrated()
                             ->afterStateUpdated(
                                 function (Set $set): void {
                                     $set('seccion_parametro_id', null);
@@ -114,7 +130,9 @@ class RegularizarInventario extends Page
                             )
                             ->searchable()
                             ->preload()
-                            ->live(),
+                            ->live()
+                            ->disabled(fn (): bool => $this->esTransferencias())
+                            ->dehydrated(),
                         FileUpload::make('archivo_excel')
                             ->label('Archivo Excel (Max 50 MB)')
                             ->acceptedFileTypes([
@@ -123,10 +141,10 @@ class RegularizarInventario extends Page
                                 'text/csv',
                             ])
                             ->disk('local')
-                            ->directory('transferencias/regularizaciones')
+                            ->directory('transferencias')
                             ->getUploadedFileNameForStorageUsing(
                                 fn ($file): string =>
-                                    'regularizacion_' .
+                                    'transferencia_' .
                                     now()->format('Ymd_His') .
                                     '_' .
                                     \Illuminate\Support\Str::lower(
@@ -138,7 +156,7 @@ class RegularizarInventario extends Page
                             ->required()
                             ->maxSize(51200)
                             ->helperText(
-                                'Seleccione el archivo Excel que contiene los expedientes a regularizar.'
+                                'Seleccione el archivo Excel que contiene los expedientes de la transferencia.'
                             )
                             ->columnSpanFull(),
                     ])
@@ -193,9 +211,7 @@ class RegularizarInventario extends Page
             Notification::make()
                 ->danger()
                 ->title('Datos incompletos')
-                ->body(
-                    'Debe seleccionar un Fondo y Subfondo válidos.'
-                )
+                ->body('Debe seleccionar un Fondo y Subfondo válidos.')
                 ->send();
             return;
         }
@@ -251,13 +267,13 @@ class RegularizarInventario extends Page
         }
     }
 
-    public function guardarRegularizacion(): void
+    public function guardarTransferencia(): void
     {
         if (! $this->archivoValidado || ! $this->resultadoValidacion || empty($this->resultadoValidacion['expedientes'])) {
             Notification::make()
                 ->danger()
                 ->title('No se puede guardar')
-                ->body('Debe validar correctamente el archivo antes de guardar la regularización.')
+                ->body('Debe validar correctamente el archivo antes de guardar la transferencia.')
                 ->send();
             return;
         }
@@ -326,26 +342,30 @@ class RegularizarInventario extends Page
                 archivo: $archivo,
                 expedientes: $this->resultadoValidacion['expedientes'],
                 observacion: $observacion,
-                esRegularizacion: true,
+                esRegularizacion: false,
             );
             $this->archivoValidado = false;
             $this->resultadoValidacion = null;
             Notification::make()
+                ->title('Transferencia guardada correctamente')
+                ->body("La transferencia {$transferencia->correlativo} fue registrada correctamente.")
                 ->success()
-                ->title('Regularización guardada correctamente')
-                ->body(
-                    "La regularización {$transferencia->correlativo} fue registrada correctamente."
-                )
-                ->persistent()
                 ->send();
             $this->redirect(TransferenciaResource::getUrl('index'));
         } catch (\Throwable $e) {
             Notification::make()
                 ->danger()
-                ->title('No se pudo guardar la regularización')
+                ->title('No se pudo guardar la transferencia')
                 ->body($e->getMessage())
                 ->persistent()
                 ->send();
         }
+    }
+
+    private function esTransferencias(): bool
+    {
+        return User::find(Auth::id())
+            ?->perfiles
+            ->contains('valor', 'TRANSFERENCIAS') ?? false;
     }
 }
