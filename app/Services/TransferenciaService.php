@@ -210,4 +210,137 @@ class TransferenciaService
             'fecha_creacion' => now(),
         ]);
     }
+
+    public function observar(
+        Transferencia $transferencia,
+        string $observacion,
+    ): Transferencia {
+        return DB::transaction(function () use ($transferencia, $observacion) {
+            $transferencia->refresh();
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+            if (! in_array($estadoAnterior->valor, ['INICIADO', 'CORREGIDO'], true)) {
+                throw new \RuntimeException(
+                    'La transferencia no se encuentra en un estado que permita registrar observaciones.'
+                );
+            }
+            $estadoObservado = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'OBSERVADO')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $usuarioId = Auth::id();
+            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            $transferencia->update([
+                'estado_parametro_id' => $estadoObservado->id,
+                'usuario_actualizacion_id' => $usuarioId,
+            ]);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->id,
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoObservado->id,
+                'accion' => 'OBSERVAR',
+                'fecha_accion' => now(),
+                'observacion' => $observacion,
+                'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+
+    public function actualizarExpedienteCorregido(
+        Transferencia $transferencia,
+        string $expedienteGuid,
+        array $data,
+    ): TransferenciaExpediente {
+        return DB::transaction(function () use (
+            $transferencia,
+            $expedienteGuid,
+            $data
+        ) {
+            if ($transferencia->estado?->valor !== 'OBSERVADO') {
+                throw new \RuntimeException(
+                    'La transferencia ya no permite modificaciones.'
+                );
+            }
+
+            $expediente = TransferenciaExpediente::query()
+                ->where('guid', $expedienteGuid)
+                ->where(
+                    'transferencia_id',
+                    $transferencia->getKey()
+                )
+                ->firstOrFail();
+
+            $expediente->update([
+                'codigo_referencia' => $data['codigo_referencia'],
+                'numero_caja' => $data['numero_caja'],
+                'serie_documental_parametro_id' =>
+                    $data['serie_documental_parametro_id'],
+                'descripcion_lomo' => $data['descripcion_lomo'] ?? null,
+                'detalle' => $data['detalle'] ?? null,
+                'tomo_volumen' => $data['tomo_volumen'] ?? null,
+                'fojas' => $data['fojas'] ?? null,
+                'fechas_extremas' => $data['fechas_extremas'] ?? null,
+                'soporte_parametro_id' =>
+                    $data['soporte_parametro_id'],
+                'observaciones' => $data['observaciones'] ?? null,
+                'usuario_actualizacion_id' => Auth::id(),
+            ]);
+
+            $expediente->procedencias()->sync(
+                $data['procedencias'] ?? []
+            );
+
+            return $expediente->fresh([
+                'serieDocumental',
+                'soporte',
+                'procedencias',
+            ]);
+        });
+    }
+
+    public function corregir(
+        Transferencia $transferencia,
+        string $observacion,
+    ): Transferencia {
+        return DB::transaction(function () use (
+            $transferencia,
+            $observacion
+        ) {
+            $transferencia->refresh();
+
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+
+            if ($estadoAnterior->valor !== 'OBSERVADO') {
+                throw new \RuntimeException(
+                    'La transferencia no se encuentra observada.'
+                );
+            }
+
+            $estadoCorregido = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'CORREGIDO')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+
+            $transferencia->update([
+                'estado_parametro_id' => $estadoCorregido->id,
+                'usuario_actualizacion_id' => Auth::id(),
+            ]);
+
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->getKey(),
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoCorregido->id,
+                'accion' => 'CORREGIR',
+                'fecha_accion' => now(),
+                'observacion' => $observacion,
+                'usuario_id' => Auth::id(),
+            ]);
+
+            return $transferencia->fresh(['estado']);
+        });
+    }
 }

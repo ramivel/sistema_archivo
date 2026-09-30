@@ -2,6 +2,14 @@
 
 namespace App\Filament\Resources\Transferencias\Tables;
 
+use App\Filament\Resources\Transferencias\TransferenciaResource;
+use App\Models\Transferencia;
+use App\Models\User;
+use App\Services\TransferenciaService;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -19,6 +27,10 @@ class TransferenciasTable
                     ->label('CORRELATIVO')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('estado.valor')
+                    ->label('ESTADO')
+                    ->badge()
+                    ->alignCenter(),
                 Tables\Columns\TextColumn::make('fecha_solicitud')
                     ->label('FECHA INICIO TRANSFERENCIA')
                     ->dateTime('d/m/Y H:i')
@@ -43,10 +55,6 @@ class TransferenciasTable
                     ->numeric()
                     ->alignCenter()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('estado.valor')
-                    ->label('ESTADO')
-                    ->badge()
-                    ->alignCenter(),
                 Tables\Columns\TextColumn::make('usuarioSolicitante.nombres')
                     ->label('FUNCIONARIO REMITENTE')
                     ->formatStateUsing(
@@ -63,7 +71,86 @@ class TransferenciasTable
                 //
             ])
             ->recordActions([
-                //
+                Action::make('observar')
+                    ->label('Observar')
+                    ->icon('heroicon-o-eye')
+                    ->color('warning')
+                    ->visible(
+                        fn (Transferencia $record): bool =>
+                            self::esEncargadoArchivo()
+                            && in_array(
+                                $record->estado?->valor,
+                                ['INICIADO', 'CORREGIDO'],
+                                true
+                            )
+                    )
+                    ->schema([
+                        Textarea::make('observacion')
+                            ->label('Observación')
+                            ->required()
+                            ->rows(5)
+                            ->maxLength(2000)
+                            ->placeholder(
+                                'Describa las observaciones de la transferencia.'
+                            )->extraInputAttributes([
+                                'style' => 'text-transform: uppercase',
+                            ])
+                            ->dehydrateStateUsing(
+                                fn (?string $state): ?string => $state === null
+                                    ? null
+                                    : mb_strtoupper(trim($state), 'UTF-8')
+                            ),
+                    ])
+                    ->requiresConfirmation()
+                    ->modalHeading('Observar transferencia')
+                    ->modalDescription(
+                        fn (Transferencia $record): string =>
+                            "Registre las observaciones para {$record->correlativo}."
+                    )
+                    ->modalSubmitActionLabel('Registrar observación')
+                    ->action(function (
+                        Transferencia $record,
+                        array $data
+                    ): void {
+                        try {
+                            app(TransferenciaService::class)->observar(
+                                transferencia: $record,
+                                observacion: $data['observacion'],
+                            );
+                            Notification::make()
+                                ->success()
+                                ->title('Transferencia observada')
+                                ->body(
+                                    'La observación fue registrada correctamente.'
+                                )
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title(
+                                    'No se pudo observar la transferencia'
+                                )
+                                ->body($e->getMessage())
+                                ->persistent()
+                                ->send();
+                        }
+                    }),
+                Action::make('corregir')
+                    ->label('Corregir')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
+                    ->visible(
+                        fn (Transferencia $record): bool =>
+                            self::esTransferencias()
+                            && $record->estado?->valor === 'OBSERVADO'
+                    )
+                    ->url(
+                        fn (Transferencia $record): string =>
+                            TransferenciaResource::getUrl(
+                                'corregir',
+                                ['record' => $record]
+                            )
+                    ),
             ])
             ->toolbarActions([
                 //
@@ -73,5 +160,19 @@ class TransferenciasTable
             ->defaultPaginationPageOption(500)
             ->striped()
             ->recordUrl(null);
+    }
+
+    private static function esEncargadoArchivo(): bool
+    {
+        return User::find(Auth::id())
+            ?->perfiles
+            ->contains('valor', 'ENCARGADO ARCHIVO') ?? false;
+    }
+
+    private static function esTransferencias(): bool
+    {
+        return User::find(Auth::id())
+            ?->perfiles
+            ->contains('valor', 'TRANSFERENCIAS') ?? false;
     }
 }
