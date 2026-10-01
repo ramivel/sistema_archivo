@@ -1,48 +1,6 @@
 <x-filament-panels::page>
     <div class="space-y-6">
-        @php
-            $historialObservacion = $transferencia->historial->first(fn ($historial) => $historial->accion === 'OBSERVAR');
-            $usuarioObservador = $historialObservacion?->usuario;
-        @endphp
-        <x-filament::section>
-            <x-slot name="heading">
-                Datos generales
-            </x-slot>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                    <span class="text-sm font-medium text-gray-600">
-                        Usuario que reviso
-                    </span>
-                    <div class="mt-1 rounded-lg bg-gray-100 p-3">
-                        {{ $usuarioObservador?->usuario ?? '—' }}
-                    </div>
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-600">
-                        Fecha inicio solicitud
-                    </span>
-                    <div class="mt-1 rounded-lg bg-gray-100 p-3">
-                        {{ $transferencia->fecha_solicitud?->format('d/m/Y H:i') ?? '—' }}
-                    </div>
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-600">
-                        Fecha de observación
-                    </span>
-                    <div class="mt-1 rounded-lg bg-gray-100 p-3">
-                        {{ $historialObservacion?->fecha_accion?->format('d/m/Y H:i') ?? '—' }}
-                    </div>
-                </div>
-            </div>
-            <div class="mt-4">
-                <span class="text-sm font-medium text-gray-600">
-                    Observaciones
-                </span>
-                <div class="mt-1 min-h-24 rounded-lg bg-gray-100 p-4 whitespace-pre-line">
-                    {{ $historialObservacion?->observacion ?? 'SIN OBSERVACIONES' }}
-                </div>
-            </div>
-        </x-filament::section>
+        {{ $this->datosGenerales }}
 
         <x-filament::section>
             <x-slot name="heading">
@@ -58,7 +16,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="fi-fo-field-wrp-label inline-flex text-sm font-medium">
-                        Observaciones
+                        Observaciones *
                     </label>
                     <textarea
                         wire:model="observaciones"
@@ -69,20 +27,35 @@
                     ></textarea>
                 </div>
                 <div class="flex justify-end">
-                    <x-filament::button
-                        type="button"
-                        icon="heroicon-o-paper-airplane"
-                        wire:click="guardarCorreccion"
-                        wire:loading.attr="disabled"
-                        wire:target="guardarCorreccion"
-                    >
-                        <span wire:loading.remove wire:target="guardarCorreccion">
-                            Guardar y enviar transferencia
-                        </span>
-                        <span wire:loading wire:target="guardarCorreccion">
-                            Guardando...
-                        </span>
+                    <x-filament::button type="button" icon="heroicon-o-paper-airplane" x-on:click="$dispatch('open-modal', { id: 'confirmar-guardar-correccion' })">
+                        Guardar Transferencia
                     </x-filament::button>
+                    <x-filament::modal id="confirmar-guardar-correccion">
+                        <x-slot name="heading">Confirmar corrección</x-slot>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            ¿Está seguro de guardar y enviar las correcciones de esta transferencia?
+                        </p>
+                        <x-slot name="footer">
+                            <div class="flex justify-end gap-x-3">
+                                <x-filament::button color="gray" x-on:click="$dispatch('close-modal', { id: 'confirmar-guardar-correccion' })">
+                                    Cancelar
+                                </x-filament::button>
+                                <x-filament::button
+                                    icon="heroicon-o-check"
+                                    wire:click="guardarCorreccion"
+                                    wire:loading.attr="disabled"
+                                    wire:target="guardarCorreccion"
+                                >
+                                    <span wire:loading.remove wire:target="guardarCorreccion">
+                                        Confirmar y guardar
+                                    </span>
+                                    <span wire:loading wire:target="guardarCorreccion">
+                                        Guardando...
+                                    </span>
+                                </x-filament::button>
+                            </div>
+                        </x-slot>
+                    </x-filament::modal>
                 </div>
             </div>
         </x-filament::section>

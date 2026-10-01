@@ -256,7 +256,6 @@ class TransferenciaService
             $expediente->update([
                 'codigo_referencia' => $data['codigo_referencia'],
                 'numero_caja' => $data['numero_caja'] ?? null,
-                'procedencia' => $data['procedencia'],
                 'serie_documental_parametro_id' => $data['serie_documental_parametro_id'],
                 'descripcion_lomo' => $data['descripcion_lomo'] ?? null,
                 'detalle' => $data['detalle'] ?? null,
