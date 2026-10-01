@@ -10,10 +10,18 @@ Route::get('/', function () {
 Route::middleware('auth')->get(
     '/transferencias/plantilla-excel',
     function (PlantillaTransferenciaExcelService $service) {
-        Auth::id();
         $ruta = $service->generar();
         return response()
             ->download($ruta,'plantilla_transferencia.xlsx')
             ->deleteFileAfterSend(true);
     }
-)->name('transferencias.plantilla-excel');
+)->name('transferencias.plantilla-transferencia-excel');
+Route::middleware('auth')->get(
+    '/transferencias/plantilla-regularizacion-excel',
+    function (PlantillaTransferenciaExcelService $service) {
+        $ruta = $service->generar(esRegularizacion: true);
+        return response()
+            ->download($ruta, 'plantilla_regularizacion.xlsx')
+            ->deleteFileAfterSend(true);
+    }
+)->name('transferencias.plantilla-regularizacion-excel');

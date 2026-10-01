@@ -74,17 +74,6 @@ class TransferenciaService
                         'UTF-8'
                     )
                 );
-            $procedencias = Parametro::query()
-                ->where('grupo', 'PROCEDENCIA')
-                ->where('activo', true)
-                ->whereNull('fecha_eliminacion')
-                ->get()
-                ->keyBy(
-                    fn (Parametro $parametro) => mb_strtoupper(
-                        trim((string) $parametro->sigla),
-                        'UTF-8'
-                    )
-                );
             $sigla = $this->generarSigla($fondo, $subfondo, $esRegularizacion);
             $correlativo = $this->generarCorrelativo($sigla, $anio);
             $estadoIniciado = Parametro::query()
@@ -107,6 +96,12 @@ class TransferenciaService
                 'usuario_creacion_id' => $usuarioId,
             ]);
             foreach ($expedientes as $expediente) {
+                $procedencia = $esRegularizacion ? trim((string) ($expediente['procedencia'] ?? '')) : $this->generarProcedencia(fondo: $fondo, subfondo: $subfondo, seccion: $seccion);
+                if ($procedencia === '') {
+                    throw new \RuntimeException(
+                        'La procedencia es obligatoria para todos los expedientes.'
+                    );
+                }
                 $serie = $series->get(mb_strtoupper(trim((string) $expediente['serie_documental']),'UTF-8'));
                 $soporte = $soportes->get(mb_strtoupper(trim((string) $expediente['soporte']),'UTF-8'));
                 if (! $serie || ! $soporte) {
@@ -114,10 +109,11 @@ class TransferenciaService
                         'No se encontró una parametrización requerida durante el guardado.'
                     );
                 }
-                $registroExpediente = TransferenciaExpediente::create([
+                TransferenciaExpediente::create([
                     'transferencia_id' => $transferencia->id,
                     'codigo_referencia' => $expediente['codigo_referencia'],
-                    'numero_caja' => $expediente['numero_caja'],
+                    'numero_caja' => $expediente['numero_caja'] ?? null,
+                    'procedencia' => $procedencia,
                     'serie_documental_parametro_id' => $serie->id,
                     'descripcion_lomo' => $expediente['descripcion_lomo'],
                     'detalle' => $expediente['detalle'],
@@ -128,19 +124,6 @@ class TransferenciaService
                     'observaciones' => $expediente['observaciones'],
                     'usuario_creacion_id' => $usuarioId,
                 ]);
-                $procedenciaIds = [];
-                foreach ($expediente['procedencias'] as $procedencia) {
-                    $parametro = $procedencias->get(mb_strtoupper(trim((string) $procedencia),'UTF-8'));
-                    if (! $parametro) {
-                        throw new \RuntimeException(
-                            "No se encontró la procedencia {$procedencia} durante el guardado."
-                        );
-                    }
-                    $procedenciaIds[] = $parametro->id;
-                }
-                if ($procedenciaIds !== []) {
-                    $registroExpediente->procedencias()->attach($procedenciaIds);
-                }
             }
             TransferenciaHistorial::create([
                 'transferencia_id' => $transferencia->id,
@@ -263,7 +246,6 @@ class TransferenciaService
                     'La transferencia ya no permite modificaciones.'
                 );
             }
-
             $expediente = TransferenciaExpediente::query()
                 ->where('guid', $expedienteGuid)
                 ->where(
@@ -271,31 +253,23 @@ class TransferenciaService
                     $transferencia->getKey()
                 )
                 ->firstOrFail();
-
             $expediente->update([
                 'codigo_referencia' => $data['codigo_referencia'],
-                'numero_caja' => $data['numero_caja'],
-                'serie_documental_parametro_id' =>
-                    $data['serie_documental_parametro_id'],
+                'numero_caja' => $data['numero_caja'] ?? null,
+                'procedencia' => $data['procedencia'],
+                'serie_documental_parametro_id' => $data['serie_documental_parametro_id'],
                 'descripcion_lomo' => $data['descripcion_lomo'] ?? null,
                 'detalle' => $data['detalle'] ?? null,
                 'tomo_volumen' => $data['tomo_volumen'] ?? null,
                 'fojas' => $data['fojas'] ?? null,
                 'fechas_extremas' => $data['fechas_extremas'] ?? null,
-                'soporte_parametro_id' =>
-                    $data['soporte_parametro_id'],
+                'soporte_parametro_id' => $data['soporte_parametro_id'],
                 'observaciones' => $data['observaciones'] ?? null,
                 'usuario_actualizacion_id' => Auth::id(),
             ]);
-
-            $expediente->procedencias()->sync(
-                $data['procedencias'] ?? []
-            );
-
             return $expediente->fresh([
                 'serieDocumental',
                 'soporte',
-                'procedencias',
             ]);
         });
     }
@@ -309,27 +283,22 @@ class TransferenciaService
             $observacion
         ) {
             $transferencia->refresh();
-
             $estadoAnterior = $transferencia->estado()->firstOrFail();
-
             if ($estadoAnterior->valor !== 'OBSERVADO') {
                 throw new \RuntimeException(
                     'La transferencia no se encuentra observada.'
                 );
             }
-
             $estadoCorregido = Parametro::query()
                 ->where('grupo', 'ESTADO_TRANSFERENCIA')
                 ->where('valor', 'CORREGIDO')
                 ->where('activo', true)
                 ->whereNull('fecha_eliminacion')
                 ->firstOrFail();
-
             $transferencia->update([
                 'estado_parametro_id' => $estadoCorregido->id,
                 'usuario_actualizacion_id' => Auth::id(),
             ]);
-
             TransferenciaHistorial::create([
                 'transferencia_id' => $transferencia->getKey(),
                 'estado_anterior_parametro_id' => $estadoAnterior->id,
@@ -339,8 +308,27 @@ class TransferenciaService
                 'observacion' => $observacion,
                 'usuario_id' => Auth::id(),
             ]);
-
             return $transferencia->fresh(['estado']);
         });
+    }
+
+    public function generarProcedencia(
+        Parametro $fondo,
+        Parametro $subfondo,
+        ?Parametro $seccion = null,
+    ): string {
+        $procedencia = collect([
+            $fondo->sigla,
+            $subfondo->sigla,
+            $seccion?->sigla,
+        ])
+            ->filter(fn (?string $sigla): bool => filled($sigla))
+            ->implode('/');
+        if ($procedencia === '') {
+            throw new \RuntimeException(
+                'No se pudo generar la procedencia porque faltan siglas.'
+            );
+        }
+        return $procedencia;
     }
 }

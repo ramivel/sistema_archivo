@@ -216,6 +216,7 @@ class RegularizarInventario extends Page
                 fondo: $fondo->valor,
                 subfondo: $subfondo->valor,
                 seccion: $seccion?->valor,
+                esRegularizacion: true,
             );
             $this->resultadoValidacion = $resultado;
             $this->archivoValidado = true;

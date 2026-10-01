@@ -24,7 +24,6 @@ use Filament\Tables\Enums\RecordActionsPosition;
 class CorregirTransferencia extends Page implements HasTable
 {
     use InteractsWithTable;
-
     protected static string $resource = TransferenciaResource::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-pencil-square';
     protected string $view = 'filament.resources.transferencias.pages.corregir-transferencia';
@@ -34,17 +33,8 @@ class CorregirTransferencia extends Page implements HasTable
     public function mount(Transferencia $record): void
     {
         $usuario = User::find(Auth::id());
-
-        abort_unless(
-            $usuario?->perfiles->contains('valor', 'TRANSFERENCIAS'),
-            403
-        );
-
-        abort_unless(
-            $record->usuario_solicitante_id === Auth::id(),
-            403
-        );
-
+        abort_unless($usuario?->perfiles->contains('valor', 'TRANSFERENCIAS'), 403);
+        abort_unless($record->usuario_solicitante_id === Auth::id(),403);
         $record->load([
             'fondo',
             'subfondo',
@@ -53,9 +43,7 @@ class CorregirTransferencia extends Page implements HasTable
             'estado',
             'historial.usuario',
         ]);
-
         abort_unless($record->estado?->valor === 'OBSERVADO', 404);
-
         $this->transferencia = $record;
     }
 
@@ -90,28 +78,22 @@ class CorregirTransferencia extends Page implements HasTable
                     ->with([
                         'serieDocumental',
                         'soporte',
-                        'procedencias',
                     ])
             )
             ->columns([
-                
-
                 TextColumn::make('codigo_referencia')
                     ->label('CÓDIGO DE REFERENCIA')
                     ->searchable(),
-
                 TextColumn::make('numero_caja')
                     ->label('N° DE CAJA')
                     ->searchable(),
-
-                TextColumn::make('procedencias.sigla')
+                TextColumn::make('procedencia')
                     ->label('PROCEDENCIA')
                     ->formatStateUsing(
-                        fn (TransferenciaExpediente $record): string =>
-                            $record->procedencias
-                                ->pluck('sigla')
-                                ->join(', ')
-                    ),
+                        fn (?string $state): string =>
+                            filled($state) ? $state : '-'
+                    )
+                    ->limit(80),
 
                 TextColumn::make('serieDocumental.valor')
                     ->label('SERIE DOCUMENTAL')
@@ -137,25 +119,14 @@ class CorregirTransferencia extends Page implements HasTable
 
                         TextInput::make('numero_caja')
                             ->label('Número de caja')
-                            ->required()
+                            ->nullable()
+                            ->placeholder('-')
                             ->maxLength(50),
 
-                        Select::make('procedencias')
-                            ->label('Procedencias')
-                            ->multiple()
+                        TextInput::make('procedencia')
+                            ->label('Procedencia')
                             ->required()
-                            ->searchable()
-                            ->preload()
-                            ->options(
-                                fn (): array => Parametro::query()
-                                    ->where('grupo', 'PROCEDENCIA')
-                                    ->where('activo', true)
-                                    ->whereNull('fecha_eliminacion')
-                                    ->orderBy('orden')
-                                    ->orderBy('sigla')
-                                    ->pluck('sigla', 'id')
-                                    ->toArray()
-                            ),
+                            ->maxLength(50),
 
                         Select::make('serie_documental_parametro_id')
                             ->label('Serie documental')
@@ -220,10 +191,7 @@ class CorregirTransferencia extends Page implements HasTable
                         fn (TransferenciaExpediente $record): array => [
                             'codigo_referencia' => $record->codigo_referencia,
                             'numero_caja' => $record->numero_caja,
-                            'procedencias' => $record->procedencias
-                                ->pluck('id')
-                                ->values()
-                                ->all(),
+                            'procedencia' => $record->procedencia,
                             'serie_documental_parametro_id' =>
                                 $record->serie_documental_parametro_id,
                             'descripcion_lomo' =>

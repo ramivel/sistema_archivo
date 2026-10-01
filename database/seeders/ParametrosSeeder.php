@@ -197,27 +197,6 @@ class ParametrosSeeder extends Seeder
                 'orden' => 4,
             ],
             // =====================================================
-            // 6. PROCEDENCIAS
-            // =====================================================
-            [
-                'grupo' => 'PROCEDENCIA',
-                'valor' => 'AUTORIDAD JURISDICCIONAL ADMINISTRATIVA MINERA',
-                'sigla' => 'AJAM',
-                'orden' => 1,
-            ],
-            [
-                'grupo' => 'PROCEDENCIA',
-                'valor' => 'AUTORIDAD GENERAL JURISDICCIONAL ADMINISTRATIVA MINERA',
-                'sigla' => 'AGJAM',
-                'orden' => 2,
-            ],
-            [
-                'grupo' => 'PROCEDENCIA',
-                'valor' => 'SUPERINTENDENCIA GENERAL DE MINAS',
-                'sigla' => 'SGM',
-                'orden' => 3,
-            ],
-            // =====================================================
             // 7. SERIES DOCUMENTALES
             // =====================================================
             [

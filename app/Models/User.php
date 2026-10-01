@@ -141,5 +141,20 @@ class User extends Authenticatable implements HasName
             'usuario_eliminacion_id'
         );
     }
+    public function tienePerfil(string $perfil): bool
+    {
+        $this->loadMissing('perfiles');
+        return $this->perfiles->contains('valor', $perfil);
+    }
+
+    public function esEncargadoArchivo(): bool
+    {
+        return $this->tienePerfil('ENCARGADO ARCHIVO');
+    }
+
+    public function esTransferencias(): bool
+    {
+        return $this->tienePerfil('TRANSFERENCIAS');
+    }
 
 }

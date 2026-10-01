@@ -31,12 +31,12 @@ class CrearTransferencia extends Page
 
     public function mount(): void
     {
-        $usuario = User::find(Auth::id());
-        if ($this->esTransferencias()) {
+        $user = Auth::user();
+        if ($user instanceof User && $user->esTransferencias()) {
             $this->form->fill([
-                'fondo_parametro_id' => $usuario?->oficina_parametro_id,
-                'subfondo_parametro_id' => $usuario?->direccion_parametro_id,
-                'seccion_parametro_id' => $usuario?->area_parametro_id,
+                'fondo_parametro_id' => $user->oficina_parametro_id,
+                'subfondo_parametro_id' => $user->direccion_parametro_id,
+                'seccion_parametro_id' => $user->area_parametro_id,
             ]);
             return;
         }
@@ -50,6 +50,7 @@ class CrearTransferencia extends Page
 
     public function form(Schema $schema): Schema
     {
+        $user = Auth::user();
         return $schema
             ->components([
                 Section::make('Datos de la transferencia')
@@ -71,7 +72,7 @@ class CrearTransferencia extends Page
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->disabled(fn (): bool => $this->esTransferencias())
+                            ->disabled(fn (): bool => $user instanceof User && $user->esTransferencias())
                             ->dehydrated()
                             ->afterStateUpdated(
                                 function (Set $set): void {
@@ -102,7 +103,7 @@ class CrearTransferencia extends Page
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->disabled(fn (): bool => $this->esTransferencias())
+                            ->disabled(fn (): bool => $user instanceof User && $user->esTransferencias())
                             ->dehydrated()
                             ->afterStateUpdated(
                                 function (Set $set): void {
@@ -131,7 +132,7 @@ class CrearTransferencia extends Page
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->disabled(fn (): bool => $this->esTransferencias())
+                            ->disabled(fn (): bool => $user instanceof User && $user->esTransferencias())
                             ->dehydrated(),
                         FileUpload::make('archivo_excel')
                             ->label('Archivo Excel (Max 50 MB)')
@@ -232,6 +233,13 @@ class CrearTransferencia extends Page
                 fondo: $fondo->valor,
                 subfondo: $subfondo->valor,
                 seccion: $seccion?->valor,
+                esRegularizacion: false,
+                procedenciaAutomatica: app(TransferenciaService::class)
+                    ->generarProcedencia(
+                        fondo: $fondo,
+                        subfondo: $subfondo,
+                        seccion: $seccion,
+                    ),
             );
             $this->resultadoValidacion = $resultado;
             $this->archivoValidado = true;
@@ -360,12 +368,5 @@ class CrearTransferencia extends Page
                 ->persistent()
                 ->send();
         }
-    }
-
-    private function esTransferencias(): bool
-    {
-        return User::find(Auth::id())
-            ?->perfiles
-            ->contains('valor', 'TRANSFERENCIAS') ?? false;
     }
 }

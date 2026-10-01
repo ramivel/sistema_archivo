@@ -17,6 +17,7 @@ class TransferenciasTable
 {
     public static function configure(Table $table): Table
     {
+        $user = Auth::user();
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('numero')
@@ -75,14 +76,14 @@ class TransferenciasTable
                     ->label('Observar')
                     ->icon('heroicon-o-eye')
                     ->color('warning')
-                    ->visible(
-                        fn (Transferencia $record): bool =>
-                            self::esEncargadoArchivo()
-                            && in_array(
-                                $record->estado?->valor,
-                                ['INICIADO', 'CORREGIDO'],
-                                true
-                            )
+                    ->visible(fn (Transferencia $record): bool =>
+                        $user instanceof User
+                        && $user->esEncargadoArchivo()
+                        && in_array(
+                            $record->estado?->valor,
+                            ['INICIADO', 'CORREGIDO'],
+                            true
+                        )
                     )
                     ->schema([
                         Textarea::make('observacion')
@@ -141,7 +142,8 @@ class TransferenciasTable
                     ->color('primary')
                     ->visible(
                         fn (Transferencia $record): bool =>
-                            self::esTransferencias()
+                            $user instanceof User
+                            && $user->esTransferencias()
                             && $record->estado?->valor === 'OBSERVADO'
                     )
                     ->url(
@@ -160,19 +162,5 @@ class TransferenciasTable
             ->defaultPaginationPageOption(500)
             ->striped()
             ->recordUrl(null);
-    }
-
-    private static function esEncargadoArchivo(): bool
-    {
-        return User::find(Auth::id())
-            ?->perfiles
-            ->contains('valor', 'ENCARGADO ARCHIVO') ?? false;
-    }
-
-    private static function esTransferencias(): bool
-    {
-        return User::find(Auth::id())
-            ?->perfiles
-            ->contains('valor', 'TRANSFERENCIAS') ?? false;
     }
 }

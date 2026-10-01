@@ -13,13 +13,19 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class PlantillaTransferenciaExcelService
 {
-    public function generar(): string
+    public function generar(bool $esRegularizacion = false): string
     {
-        $rutaConfigurada = env('PLANTILLA_TRANSFERENCIA_EXCEL');
+        $configuracion = $esRegularizacion
+            ? 'PLANTILLA_REGULARIZACION_EXCEL'
+            : 'PLANTILLA_TRANSFERENCIA_EXCEL';
+        $nombreArchivo = $esRegularizacion
+            ? 'plantilla_regularizacion.xlsx'
+            : 'plantilla_transferencia.xlsx';
+        $rutaConfigurada = env($configuracion);
         $rutaPlantilla = base_path($rutaConfigurada);
         if (! is_file($rutaPlantilla)) {
             throw new \RuntimeException(
-                "No se encontró la plantilla de transferencia Excel: {$rutaPlantilla}"
+                "No se encontró la plantilla Excel: {$rutaPlantilla}"
             );
         }
         $spreadsheet = IOFactory::load($rutaPlantilla);
@@ -28,13 +34,14 @@ class PlantillaTransferenciaExcelService
             $this->reemplazarUbicacionUsuario($spreadsheet, $usuario);
         }
         $this->crearHojaParametrica($spreadsheet);
-        $rutaTemporal = storage_path('app/private/transferencias/plantillas/plantilla_transferencia.xlsx');
+        $rutaTemporal = storage_path(
+            "app/private/transferencias/plantillas/{$nombreArchivo}"
+        );
         $directorio = dirname($rutaTemporal);
         if (! is_dir($directorio)) {
             mkdir($directorio, 0755, true);
         }
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($rutaTemporal);
+        (new Xlsx($spreadsheet))->save($rutaTemporal);
         return $rutaTemporal;
     }
 
@@ -94,16 +101,11 @@ class PlantillaTransferenciaExcelService
                 'valor',
             ],
             4 => [
-                'PROCEDENCIA:',
-                'PROCEDENCIA',
-                'sigla',
-            ],
-            5 => [
                 'SERIE DOCUMENTAL:',
                 'SERIE_DOCUMENTAL',
                 'valor',
             ],
-            6 => [
+            5 => [
                 'SOPORTE:',
                 'SOPORTE',
                 'valor',
@@ -143,11 +145,11 @@ class PlantillaTransferenciaExcelService
             $hoja->getColumnDimension($letraColumna)->setWidth(35);
         }
         $hoja
-            ->getStyle("A1:{$ultimaColumna}6")
+            ->getStyle("A1:{$ultimaColumna}5")
             ->getAlignment()
             ->setVertical('top');
         $hoja
-            ->getStyle('A1:A6')
+            ->getStyle('A1:A5')
             ->getFont()
             ->setBold(true);
         $hoja->freezePane('B1');

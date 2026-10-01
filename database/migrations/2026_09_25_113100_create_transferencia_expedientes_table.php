@@ -17,7 +17,8 @@ return new class extends Migration
             $table->uuid('guid')->default(DB::raw('gen_random_uuid()'));
             $table->unsignedBigInteger('transferencia_id');
             $table->string('codigo_referencia', 50);
-            $table->string('numero_caja', 50);
+            $table->string('numero_caja', 50)->nullable();
+            $table->text('procedencia');
             $table->unsignedBigInteger('serie_documental_parametro_id');
             $table->text('descripcion_lomo')->nullable();
             $table->text('detalle')->nullable();

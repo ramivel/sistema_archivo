@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class TransferenciaExpediente extends Model
 {
@@ -18,6 +17,7 @@ class TransferenciaExpediente extends Model
         'transferencia_id',
         'codigo_referencia',
         'numero_caja',
+        'procedencia',
         'serie_documental_parametro_id',
         'descripcion_lomo',
         'detalle',
@@ -69,20 +69,7 @@ class TransferenciaExpediente extends Model
             Parametro::class,
             'soporte_parametro_id'
         );
-    }
-
-    public function procedencias(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            Parametro::class,
-            'transferencias.transferencia_expediente_procedencias',
-            'transferencia_expediente_id',
-            'procedencia_parametro_id'
-        )
-            ->where('parametros.grupo', 'PROCEDENCIA')
-            ->where('parametros.activo', true)
-            ->orderBy('parametros.orden');
-    }
+    }    
 
     public function usuarioCreacion(): BelongsTo
     {

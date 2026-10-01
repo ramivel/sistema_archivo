@@ -138,20 +138,35 @@
                     ></textarea>
                 </div>
                 <div class="flex justify-end">
-                    <x-filament::button
-                        type="button"
-                        icon="heroicon-o-arrow-down-tray"
-                        wire:click="guardarTransferencia"
-                        wire:loading.attr="disabled"
-                        wire:target="guardarTransferencia"
-                    >
-                        <span wire:loading.remove wire:target="guardarTransferencia">
-                            Guardar Transferencia
-                        </span>
-                        <span wire:loading wire:target="guardarTransferencia">
-                            Guardando...
-                        </span>
+                    <x-filament::button type="button" icon="heroicon-o-arrow-down-tray" x-on:click="$dispatch('open-modal', { id: 'confirmar-guardar-transferencia' })">
+                        Guardar Transferencia
                     </x-filament::button>
+                    <x-filament::modal id="confirmar-guardar-transferencia">
+                        <x-slot name="heading">Confirmar transferencia</x-slot>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            ¿Está seguro de guardar y registrar esta transferencia?
+                        </p>
+                        <x-slot name="footer">
+                            <div class="flex justify-end gap-x-3">
+                                <x-filament::button color="gray"x-on:click="$dispatch('close-modal', { id: 'confirmar-guardar-transferencia' })">
+                                    Cancelar
+                                </x-filament::button>
+                                <x-filament::button
+                                    icon="heroicon-o-check"
+                                    wire:click="guardarTransferencia"
+                                    wire:loading.attr="disabled"
+                                    wire:target="guardarTransferencia"
+                                >
+                                    <span wire:loading.remove wire:target="guardarTransferencia">
+                                        Confirmar y guardar
+                                    </span>
+                                    <span wire:loading wire:target="guardarTransferencia">
+                                        Guardando...
+                                    </span>
+                                </x-filament::button>
+                            </div>
+                        </x-slot>
+                    </x-filament::modal>
                 </div>
             </div>
         </x-filament::section>
@@ -183,10 +198,10 @@
                                     {{ $expediente['codigo_referencia'] }}
                                 </td>
                                 <td class="px-3 py-2">
-                                    {{ $expediente['numero_caja'] }}
+                                    {{ $expediente['numero_caja'] ?? '-' }}
                                 </td>
                                 <td class="px-3 py-2">
-                                    {{ implode(', ', $expediente['procedencias']) }}
+                                    {{ $expediente['procedencia'] }}
                                 </td>
                                 <td class="px-3 py-2">
                                     {{ $expediente['serie_documental'] }}
