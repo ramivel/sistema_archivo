@@ -12,6 +12,8 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Section;
 
 class TransferenciasTable
 {
@@ -72,70 +74,7 @@ class TransferenciasTable
                 //
             ])
             ->recordActions([
-                Action::make('observar')
-                    ->label('Observar')
-                    ->icon('heroicon-o-eye')
-                    ->color('warning')
-                    ->visible(fn (Transferencia $record): bool =>
-                        $user instanceof User
-                        && $user->esEncargadoArchivo()
-                        && in_array(
-                            $record->estado?->valor,
-                            ['INICIADO', 'CORREGIDO'],
-                            true
-                        )
-                    )
-                    ->schema([
-                        Textarea::make('observacion')
-                            ->label('Observación')
-                            ->required()
-                            ->rows(5)
-                            ->maxLength(2000)
-                            ->placeholder(
-                                'Describa las observaciones de la transferencia.'
-                            )->extraInputAttributes([
-                                'style' => 'text-transform: uppercase',
-                            ])
-                            ->dehydrateStateUsing(
-                                fn (?string $state): ?string => $state === null
-                                    ? null
-                                    : mb_strtoupper(trim($state), 'UTF-8')
-                            ),
-                    ])
-                    ->requiresConfirmation()
-                    ->modalHeading('Observar transferencia')
-                    ->modalDescription(
-                        fn (Transferencia $record): string =>
-                            "Registre las observaciones para {$record->correlativo}."
-                    )
-                    ->modalSubmitActionLabel('Registrar observación')
-                    ->action(function (
-                        Transferencia $record,
-                        array $data
-                    ): void {
-                        try {
-                            app(TransferenciaService::class)->observar(
-                                transferencia: $record,
-                                observacion: $data['observacion'],
-                            );
-                            Notification::make()
-                                ->success()
-                                ->title('Transferencia observada')
-                                ->body(
-                                    'La observación fue registrada correctamente.'
-                                )
-                                ->send();
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->danger()
-                                ->title(
-                                    'No se pudo observar la transferencia'
-                                )
-                                ->body($e->getMessage())
-                                ->persistent()
-                                ->send();
-                        }
-                    }),
+                self::observarAction($user),
                 Action::make('corregir')
                     ->label('Corregir')
                     ->icon('heroicon-o-pencil-square')
@@ -162,5 +101,119 @@ class TransferenciasTable
             ->defaultPaginationPageOption(500)
             ->striped()
             ->recordUrl(null);
+    }
+    private static function observarAction(?User $user): Action
+    {
+        return Action::make('observar')
+            ->label('Observar')
+            ->icon('heroicon-o-eye')
+            ->color('warning')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && $user->esEncargadoArchivo()
+                    && in_array(
+                        $record->estado?->valor,
+                        ['INICIADO', 'CORREGIDO'],
+                        true
+                    )
+            )
+            ->schema([
+                Section::make('Observar Transferencia')
+                    ->description('Los campos marcados con * son obligatorios.')
+                    ->columnSpanFull()
+                    ->schema([
+                        TextEntry::make('usuario_remitente')
+                            ->label('Usuario remitente')
+                            ->state(
+                                fn (Transferencia $record): string =>
+                                    trim(
+                                        "{$record->usuarioSolicitante?->nombres} "
+                                        . "{$record->usuarioSolicitante?->apellidos}"
+                                    )
+                            ),
+                        TextEntry::make('fecha_solicitud')
+                            ->label('Fecha inicio solicitud')
+                            ->state(
+                                fn (Transferencia $record): string =>
+                                    $record->fecha_solicitud?->format(
+                                        'd/m/Y H:i'
+                                    ) ?? '-'
+                            ),
+                        TextEntry::make('total_expedientes')
+                            ->label('Total expedientes')
+                            ->state(
+                                fn (Transferencia $record): string =>
+                                    (string) $record->total_expedientes
+                            ),
+                        TextEntry::make('fondo')
+                            ->label('Fondo')
+                            ->state(
+                                fn (Transferencia $record): string =>
+                                    $record->fondo?->valor ?? '-'
+                            ),
+                        TextEntry::make('subfondo')
+                            ->label('Subfondo')
+                            ->state(
+                                fn (Transferencia $record): string =>
+                                    $record->subfondo?->valor ?? '-'
+                            ),
+                        TextEntry::make('seccion')
+                            ->label('Sección')
+                            ->state(
+                                fn (Transferencia $record): string =>
+                                    $record->seccion?->valor ?? '-'
+                            ),
+                        Textarea::make('observacion')
+                            ->label('Observaciones')
+                            ->required()
+                            ->rows(5)
+                            ->maxLength(2000)
+                            ->columnSpanFull()
+                            ->placeholder(
+                                'Describa las observaciones de la transferencia.'
+                            )
+                            ->extraInputAttributes([
+                                'style' => 'text-transform: uppercase',
+                            ])
+                            ->dehydrateStateUsing(
+                                fn (?string $state): string =>
+                                    mb_strtoupper(
+                                        trim((string) $state),
+                                        'UTF-8'
+                                    )
+                            ),
+                    ])
+                    ->columns(3),
+            ])
+            ->modalHeading(
+                fn (Transferencia $record): string =>
+                    $record->correlativo
+            )
+            ->modalSubmitActionLabel('Observar Transferencia')
+            ->modalCancelActionLabel('Cancelar')
+            ->action(function (
+                Transferencia $record,
+                array $data
+            ): void {
+                try {
+                    app(TransferenciaService::class)->observar(
+                        transferencia: $record,
+                        observacion: $data['observacion'],
+                    );
+                    Notification::make()
+                        ->success()
+                        ->title('Transferencia observada')
+                        ->body("La observación de {$record->correlativo} fue registrada correctamente.")
+                        ->send();
+                } catch (\Throwable $e) {
+                    Notification::make()
+                        ->danger()
+                        ->title("No se pudo observar {$record->correlativo}")
+                        ->body($e->getMessage())
+                        ->persistent()
+                        ->send();
+                }
+            });
     }
 }
