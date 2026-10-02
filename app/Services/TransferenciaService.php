@@ -330,4 +330,235 @@ class TransferenciaService
         }
         return $procedencia;
     }
+
+    public function solicitarAnulacion(
+        Transferencia $transferencia,
+        string $observacion,
+    ): Transferencia {
+        return DB::transaction(function () use (
+            $transferencia,
+            $observacion
+        ) {
+            $transferencia->refresh();
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+            if (! in_array(
+                $estadoAnterior->valor,
+                ['INICIADO', 'OBSERVADO', 'CORREGIDO', 'APROBADO'],
+                true
+            )) {
+                throw new \RuntimeException(
+                    'La transferencia no permite solicitar anulación.'
+                );
+            }
+            $estadoSolicitud = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'SOLICITUD DE ANULACIÓN')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            if ($observacion === '') {
+                throw new \RuntimeException(
+                    'Debe registrar el motivo de la anulación.'
+                );
+            }
+            $usuarioId = Auth::id();
+            $transferencia->update([
+                'estado_parametro_id' => $estadoSolicitud->id,
+                'usuario_actualizacion_id' => $usuarioId,
+            ]);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->id,
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoSolicitud->id,
+                'accion' => 'SOLICITAR ANULACIÓN',
+                'fecha_accion' => now(),
+                'observacion' => $observacion,
+                'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+
+    public function aprobarAnulacion(
+        Transferencia $transferencia,
+    ): Transferencia {
+        return DB::transaction(function () use ($transferencia) {
+            $transferencia->refresh();
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+            if ($estadoAnterior->valor !== 'SOLICITUD DE ANULACIÓN') {
+                throw new \RuntimeException(
+                    'La transferencia no tiene una solicitud de anulación pendiente.'
+                );
+            }
+            $estadoAnulado = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'ANULADO')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $usuarioId = Auth::id();
+            $transferencia->update([
+                'estado_parametro_id' => $estadoAnulado->id,
+                'usuario_actualizacion_id' => $usuarioId,
+            ]);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->id,
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoAnulado->id,
+                'accion' => 'APROBAR ANULACIÓN',
+                'fecha_accion' => now(),
+                'observacion' => null,
+                'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+
+    public function rechazarAnulacion(
+        Transferencia $transferencia,
+        string $observacion,
+    ): Transferencia {
+        return DB::transaction(function () use (
+            $transferencia,
+            $observacion
+        ) {
+            $transferencia->refresh();
+            $estadoActual = $transferencia->estado()->firstOrFail();
+            if ($estadoActual->valor !== 'SOLICITUD DE ANULACIÓN') {
+                throw new \RuntimeException(
+                    'La transferencia no tiene una solicitud de anulación pendiente.'
+                );
+            }
+            $historialSolicitud = TransferenciaHistorial::query()
+                ->where('transferencia_id', $transferencia->id)
+                ->where('accion', 'SOLICITAR ANULACIÓN')
+                ->latest('fecha_accion')
+                ->firstOrFail();
+            $estadoAnterior = Parametro::query()
+                ->whereKey(
+                    $historialSolicitud->estado_anterior_parametro_id
+                )
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->firstOrFail();
+            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            if ($observacion === '') {
+                throw new \RuntimeException(
+                    'Debe registrar el motivo del rechazo.'
+                );
+            }
+            $usuarioId = Auth::id();
+            $transferencia->update([
+                'estado_parametro_id' => $estadoAnterior->id,
+                'usuario_actualizacion_id' => $usuarioId,
+            ]);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->id,
+                'estado_anterior_parametro_id' => $estadoActual->id,
+                'estado_nuevo_parametro_id' => $estadoAnterior->id,
+                'accion' => 'RECHAZAR ANULACIÓN',
+                'fecha_accion' => now(),
+                'observacion' => $observacion,
+                'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+
+    public function aprobarTransferencia(
+        Transferencia $transferencia,
+    ): Transferencia {
+        return DB::transaction(function () use ($transferencia) {
+            $transferencia->refresh();
+            if ($transferencia->es_regularizacion) {
+                throw new \RuntimeException(
+                    'Las regularizaciones no pueden aprobarse mediante esta acción.'
+                );
+            }
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+            if (! in_array(
+                $estadoAnterior->valor,
+                ['INICIADO', 'CORREGIDO'],
+                true
+            )) {
+                throw new \RuntimeException(
+                    'La transferencia no se encuentra en un estado aprobable.'
+                );
+            }
+            $estadoAprobado = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'APROBADO')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $usuarioId = Auth::id();
+            $transferencia->update([
+                'estado_parametro_id' => $estadoAprobado->id,
+                'usuario_actualizacion_id' => $usuarioId,
+            ]);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->id,
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoAprobado->id,
+                'accion' => 'APROBAR',
+                'fecha_accion' => now(),
+                'observacion' => null,
+                'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+    public function rechazarTransferencia(
+        Transferencia $transferencia,
+        string $observacion,
+        ?string $archivoNotaRechazo = null,
+    ): Transferencia {
+        return DB::transaction(function () use (
+            $transferencia,
+            $observacion,
+            $archivoNotaRechazo,
+        ) {
+            $transferencia->refresh();
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+            if (! in_array(
+                $estadoAnterior->valor,
+                ['INICIADO', 'CORREGIDO', 'APROBADO'],
+                true
+            )) {
+                throw new \RuntimeException(
+                    'La transferencia no se encuentra en un estado rechazable.'
+                );
+            }
+            $estadoRechazado = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'RECHAZADO')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            if ($observacion === '') {
+                throw new \RuntimeException(
+                    'Debe registrar la observación del rechazo.'
+                );
+            }
+            $usuarioId = Auth::id();
+            $datosActualizacion = [
+                'estado_parametro_id' => $estadoRechazado->id,
+                'usuario_actualizacion_id' => $usuarioId,
+            ];
+            if (filled($archivoNotaRechazo))
+                $datosActualizacion['archivo_nota_rechazo'] = $archivoNotaRechazo;
+            $transferencia->update($datosActualizacion);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->id,
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoRechazado->id,
+                'accion' => 'RECHAZAR',
+                'fecha_accion' => now(),
+                'observacion' => $observacion,
+                'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
 }
