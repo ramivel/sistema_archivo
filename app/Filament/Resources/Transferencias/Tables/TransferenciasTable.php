@@ -76,6 +76,8 @@ class TransferenciasTable
                 //
             ])
             ->recordActions([
+                self::imprimirEtiquetasAction($user),
+                self::imprimirSolicitudAction($user),
                 self::aprobarTransferenciaAction($user),
                 self::observarAction($user),
                 self::corregirAction($user),
@@ -678,5 +680,61 @@ class TransferenciasTable
                         ->send();
                 }
             });
+    }
+
+    private static function imprimirEtiquetasAction(?User $user): Action
+    {
+        return Action::make('imprimirEtiquetas')
+            ->label('Imprimir etiquetas')
+            ->icon('heroicon-o-qr-code')
+            ->color('gray')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && $record->estado?->valor === 'APROBADO'
+                    && (
+                        $user->esEncargadoArchivo()
+                        || (
+                            $user->esTransferencias()
+                            && $record->usuario_solicitante_id === $user->id
+                        )
+                    )
+            )
+            ->url(
+                fn (Transferencia $record): string =>
+                    route(
+                        'transferencias.imprimir-etiquetas',
+                        ['transferencia' => $record]
+                    )
+            )
+            ->openUrlInNewTab();
+    }
+
+    private static function imprimirSolicitudAction(?User $user): Action
+    {
+        return Action::make('imprimirSolicitud')
+            ->label('Imprimir solicitud de transferencia')
+            ->icon('heroicon-o-document-arrow-down')
+            ->color('gray')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && (
+                        $user->esEncargadoArchivo()
+                        || (
+                            $user->esTransferencias()
+                            && $record->estado?->valor === 'APROBADO'
+                            && $record->usuario_solicitante_id === $user->id
+                        )
+                    )
+            )
+            ->url(
+                fn (Transferencia $record): string =>
+                    route(
+                        'transferencias.imprimir-solicitud',
+                        ['transferencia' => $record]
+                    )
+            )
+            ->openUrlInNewTab();
     }
 }
