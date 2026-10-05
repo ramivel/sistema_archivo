@@ -148,7 +148,7 @@
                         </p>
                         <x-slot name="footer">
                             <div class="flex justify-end gap-x-3">
-                                <x-filament::button color="gray"x-on:click="$dispatch('close-modal', { id: 'confirmar-guardar-transferencia' })">
+                                <x-filament::button color="gray" x-on:click="$dispatch('close-modal', { id: 'confirmar-guardar-transferencia' })">
                                     Cancelar
                                 </x-filament::button>
                                 <x-filament::button

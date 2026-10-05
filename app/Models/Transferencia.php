@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transferencia extends Model
@@ -16,7 +17,7 @@ class Transferencia extends Model
     public const UPDATED_AT = 'fecha_actualizacion';
     public const DELETED_AT = 'fecha_eliminacion';
 
-    protected $fillable = [        
+    protected $fillable = [
         'correlativo',
         'fondo_parametro_id',
         'subfondo_parametro_id',
@@ -133,6 +134,18 @@ class Transferencia extends Model
         return $this->belongsTo(
             User::class,
             'usuario_eliminacion_id'
+        );
+    }
+
+    public function correccionesArchivo(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            TransferenciaExpedienteCorreccionArchivo::class,
+            TransferenciaExpediente::class,
+            'transferencia_id',
+            'transferencia_expediente_id',
+            'id',
+            'id'
         );
     }
 }

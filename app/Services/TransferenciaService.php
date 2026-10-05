@@ -6,6 +6,7 @@ use App\Models\Parametro;
 use App\Models\Transferencia;
 use App\Models\TransferenciaExpediente;
 use App\Models\TransferenciaHistorial;
+use App\Models\TransferenciaExpedienteCorreccionArchivo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -557,6 +558,105 @@ class TransferenciaService
                 'fecha_accion' => now(),
                 'observacion' => $observacion,
                 'usuario_id' => $usuarioId,
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+
+    public function actualizarExpedienteCorregidoArchivo(
+        Transferencia $transferencia,
+        string $expedienteGuid,
+        array $data
+    ): TransferenciaExpedienteCorreccionArchivo {
+        return DB::transaction(function () use (
+            $transferencia,
+            $expedienteGuid,
+            $data
+        ) {
+            if ($transferencia->estado?->valor !== 'APROBADO') {
+                throw new \RuntimeException(
+                    'La transferencia no se encuentra aprobada.'
+                );
+            }
+            $expediente = TransferenciaExpediente::query()
+                ->where('guid', $expedienteGuid)
+                ->where(
+                    'transferencia_id',
+                    $transferencia->getKey()
+                )
+                ->firstOrFail();
+            $datos = [
+                'codigo_referencia' => $data['codigo_referencia'],
+                'numero_caja' => $data['numero_caja'] ?? null,
+                'procedencia' => $data['procedencia'],
+                'serie_documental_parametro_id' => $data['serie_documental_parametro_id'],
+                'descripcion_lomo' => $data['descripcion_lomo'] ?? null,
+                'detalle' => $data['detalle'] ?? null,
+                'tomo_volumen' => $data['tomo_volumen'] ?? null,
+                'fojas' => $data['fojas'] ?? null,
+                'fechas_extremas' => $data['fechas_extremas'] ?? null,
+                'soporte_parametro_id' => $data['soporte_parametro_id'],
+                'observaciones' => $data['observaciones'] ?? null,
+            ];
+            $correccion = TransferenciaExpedienteCorreccionArchivo::query()
+                ->where('transferencia_expediente_id', $expediente->getKey())
+                ->first();
+            if ($correccion) {
+                $correccion->update([
+                    ...$datos,
+                    'usuario_actualizacion_id' => Auth::id(),
+                    'fecha_actualizacion' => now(),
+                ]);
+            } else {
+                $correccion = TransferenciaExpedienteCorreccionArchivo::create([
+                    ...$datos,
+                    'transferencia_expediente_id' =>
+                        $expediente->getKey(),
+                    'usuario_creacion_id' => Auth::id(),
+                    'fecha_creacion' => now(),
+                ]);
+            }
+            return $correccion->fresh([
+                'serieDocumental',
+                'soporte',
+            ]);
+        });
+    }
+
+    public function finalizar(
+        Transferencia $transferencia,
+        string $observacion,
+    ): Transferencia {
+        return DB::transaction(function () use (
+            $transferencia,
+            $observacion
+        ) {
+            $transferencia->refresh();
+            $estadoAnterior = $transferencia->estado()->firstOrFail();
+            if ($estadoAnterior->valor !== 'APROBADO') {
+                throw new \RuntimeException(
+                    'La transferencia no se encuentra aprobada.'
+                );
+            }
+            $estadoFinalizado = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'FINALIZADO')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $transferencia->update([
+                'estado_parametro_id' => $estadoFinalizado->id,
+                'fecha_finalizacion' => now(),
+                'usuario_actualizacion_id' => Auth::id(),
+            ]);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->getKey(),
+                'estado_anterior_parametro_id' => $estadoAnterior->id,
+                'estado_nuevo_parametro_id' => $estadoFinalizado->id,
+                'accion' => 'FINALIZAR',
+                'fecha_accion' => now(),
+                'observacion' => $observacion,
+                'usuario_id' => Auth::id(),
             ]);
             return $transferencia->fresh(['estado']);
         });

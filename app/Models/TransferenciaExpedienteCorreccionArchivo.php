@@ -5,17 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class TransferenciaExpediente extends Model
+class TransferenciaExpedienteCorreccionArchivo extends Model
 {
     use HasFactory;
-    protected $table = 'transferencias.transferencia_expedientes';
+    protected $table = 'transferencias.transferencia_expediente_correcciones_archivo';
+
     public const CREATED_AT = 'fecha_creacion';
     public const UPDATED_AT = 'fecha_actualizacion';
 
     protected $fillable = [
-        'transferencia_id',
+        'transferencia_expediente_id',
         'codigo_referencia',
         'numero_caja',
         'procedencia',
@@ -27,72 +27,47 @@ class TransferenciaExpediente extends Model
         'fechas_extremas',
         'soporte_parametro_id',
         'observaciones',
-        'activo',
         'usuario_creacion_id',
         'usuario_actualizacion_id',
         'fecha_creacion',
         'fecha_actualizacion',
     ];
 
-    public function getRouteKeyName(): string
-    {
-        return 'guid';
-    }
-
     protected function casts(): array
     {
         return [
-            'activo' => 'boolean',
             'fecha_creacion' => 'datetime',
             'fecha_actualizacion' => 'datetime',
         ];
     }
 
-    public function transferencia(): BelongsTo
+    public function getRouteKeyName(): string
     {
-        return $this->belongsTo(
-            Transferencia::class,
-            'transferencia_id'
-        );
+        return 'guid';
+    }
+
+    public function expediente(): BelongsTo
+    {
+        return $this->belongsTo(TransferenciaExpediente::class,'transferencia_expediente_id');
     }
 
     public function serieDocumental(): BelongsTo
     {
-        return $this->belongsTo(
-            Parametro::class,
-            'serie_documental_parametro_id'
-        );
+        return $this->belongsTo(Parametro::class,'serie_documental_parametro_id');
     }
 
     public function soporte(): BelongsTo
     {
-        return $this->belongsTo(
-            Parametro::class,
-            'soporte_parametro_id'
-        );
+        return $this->belongsTo(Parametro::class,'soporte_parametro_id');
     }
 
     public function usuarioCreacion(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'usuario_creacion_id'
-        );
+        return $this->belongsTo(User::class,'usuario_creacion_id');
     }
 
     public function usuarioActualizacion(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'usuario_actualizacion_id'
-        );
-    }
-
-    public function correccionArchivo(): HasOne
-    {
-        return $this->hasOne(
-            TransferenciaExpedienteCorreccionArchivo::class,
-            'transferencia_expediente_id'
-        );
+        return $this->belongsTo(User::class,'usuario_actualizacion_id');
     }
 }

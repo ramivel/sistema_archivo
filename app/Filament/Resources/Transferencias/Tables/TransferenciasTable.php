@@ -85,6 +85,7 @@ class TransferenciasTable
                 self::aprobarAnulacionAction($user),
                 self::rechazarAnulacionAction($user),
                 self::rechazarTransferenciaAction($user),
+                self::finalizarTransferenciaAction($user),
             ])
             ->toolbarActions([
                 //
@@ -736,5 +737,27 @@ class TransferenciasTable
                     )
             )
             ->openUrlInNewTab();
+    }
+
+    private static function finalizarTransferenciaAction(
+        ?User $user
+    ): Action {
+        return Action::make('finalizarTransferencia')
+            ->label('Finalizar transferencia')
+            ->icon('heroicon-o-check-badge')
+            ->color('success')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && $user->esEncargadoArchivo()
+                    && $record->estado?->valor === 'APROBADO'
+            )
+            ->url(
+                fn (Transferencia $record): string =>
+                    TransferenciaResource::getUrl(
+                        'finalizar',
+                        ['record' => $record]
+                    )
+            );
     }
 }
