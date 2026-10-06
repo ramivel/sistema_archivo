@@ -45,7 +45,17 @@ class FinalizarTransferencia extends Page implements HasTable
             'usuarioSolicitante',
             'estado',
         ]);
-        abort_unless($record->estado?->valor === 'APROBADO',404);
+        abort_unless(
+            (
+                $record->es_regularizacion
+                && $record->estado?->valor === 'INICIADO'
+            )
+            || (
+                ! $record->es_regularizacion
+                && $record->estado?->valor === 'APROBADO'
+            ),
+            404
+        );
         $this->transferencia = $record;
     }
 
@@ -436,20 +446,17 @@ class FinalizarTransferencia extends Page implements HasTable
                 TextInput::make('numero_caja')
                     ->label('Número de caja')
                     ->nullable()
-                    ->numeric()
-                    ->integer()
-                    ->minValue(1)
-                    ->step(1)
+                    ->maxLength(20)
+                    ->rule(
+                        'regex:/^[1-9][0-9]*(\/[1-9][0-9]*)?$/'
+                    )
                     ->placeholder('-')
                     ->validationMessages([
-                        'numeric' => 'El número de caja debe ser un número.',
-                        'integer' => 'El número de caja debe ser un número entero.',
-                        'min' => 'El número de caja debe ser mayor o igual a 1.',
-                    ])
-                    ->hintIcon(
-                        'heroicon-m-information-circle',
-                        tooltip: 'Ingrese únicamente un número entero. Ejemplo: 1, 2 o 3. Para empastados puede dejarlo vacío.'
-                    ),
+                        'regex' =>
+                            'El número de caja debe tener un formato válido, por ejemplo: 1, 2, 3, 1/3, 2/3 o 3/3.',
+                        'max' =>
+                            'El número de caja no puede superar los 20 caracteres.',
+                    ]),
                 TextInput::make('procedencia')
                     ->label('Procedencia')
                     ->required()

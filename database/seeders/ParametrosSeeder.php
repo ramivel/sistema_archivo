@@ -40,6 +40,13 @@ class ParametrosSeeder extends Seeder
                 'padre_id' => 1,
                 'orden' => 2,
             ],
+            [
+                'grupo' => 'SUBFONDO',
+                'valor' => 'DIRECCIÓN ADMINISTRATIVA FINANCIERA',
+                'sigla' => 'DAF',
+                'padre_id' => 1,
+                'orden' => 2,
+            ],
             // =====================================================
             // 3. SECCIÓN
             // =====================================================
@@ -403,6 +410,28 @@ class ParametrosSeeder extends Seeder
                 'descripcion' => 'ESTADO GENERADO CUANDO EL USUARIO ENCARGADO ARCHIVO RECIBE Y VALIDA EL FORMULARIO DE TRANSFERENCIA Y LOS EXPEDIENTES FÍSICOS. REPRESENTA LA CONCLUSIÓN DEL PROCESO DE TRANSFERENCIA. POSTERIORMENTE, LA INFORMACIÓN PASARÁ AL INVENTARIO DEL SISTEMA.',
                 'orden' => 8,
             ],
+            // =====================================================
+            // 10. ESTADO EXPEDIENTE
+            // =====================================================
+            [
+                'grupo' => 'ESTADO_EXPEDIENTE',
+                'valor' => 'DISPONIBLE',
+                'descripcion' => 'EL EXPEDIENTE SE ENCUENTRA DISPONIBLE PARA CONSULTA O PRÉSTAMO.',
+                'orden' => 1,
+            ],
+            [
+                'grupo' => 'ESTADO_EXPEDIENTE',
+                'valor' => 'PRESTADO',
+                'descripcion' => 'EL EXPEDIENTE SE ENCUENTRA PRESTADO TEMPORALMENTE.',
+                'orden' => 2,
+            ],
+            [
+                'grupo' => 'ESTADO_EXPEDIENTE',
+                'valor' => 'BAJA',
+                'descripcion' => 'EL EXPEDIENTE FUE DADO DE BAJA DEL INVENTARIO DOCUMENTAL.',
+                'orden' => 3,
+            ],
+
         ];
 
         foreach ($parametros as $parametro) {

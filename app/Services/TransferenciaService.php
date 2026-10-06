@@ -7,6 +7,8 @@ use App\Models\Transferencia;
 use App\Models\TransferenciaExpediente;
 use App\Models\TransferenciaHistorial;
 use App\Models\TransferenciaExpedienteCorreccionArchivo;
+use App\Models\InventarioExpediente;
+use App\Models\InventarioHistorial;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -163,7 +165,7 @@ class TransferenciaService
             ->lockForUpdate()
             ->first();
         $secuencia = $correlativo ? $correlativo->secuencia + 1 : 1;
-        return "{$sigla}/{$secuencia}/{$anio}";
+        return $anio === 0 ? "{$sigla}/{$secuencia}" : "{$sigla}/{$secuencia}/{$anio}";
     }
 
     private function actualizarCorrelativo(
@@ -573,9 +575,10 @@ class TransferenciaService
             $expedienteGuid,
             $data
         ) {
-            if ($transferencia->estado?->valor !== 'APROBADO') {
+            $estadoPermitido = $transferencia->es_regularizacion ? 'INICIADO' : 'APROBADO';
+            if ($transferencia->estado?->valor !== $estadoPermitido) {
                 throw new \RuntimeException(
-                    'La transferencia no se encuentra aprobada.'
+                    'La transferencia no se encuentra en un estado válido para realizar correcciones.'
                 );
             }
             $expediente = TransferenciaExpediente::query()
@@ -633,9 +636,10 @@ class TransferenciaService
         ) {
             $transferencia->refresh();
             $estadoAnterior = $transferencia->estado()->firstOrFail();
-            if ($estadoAnterior->valor !== 'APROBADO') {
+            $estadoPermitido = $transferencia->es_regularizacion ? 'INICIADO' : 'APROBADO';
+            if ($estadoAnterior->valor !== $estadoPermitido) {
                 throw new \RuntimeException(
-                    'La transferencia no se encuentra aprobada.'
+                    'La transferencia no se encuentra en un estado válido para finalizar.'
                 );
             }
             $estadoFinalizado = Parametro::query()
@@ -661,4 +665,102 @@ class TransferenciaService
             return $transferencia->fresh(['estado']);
         });
     }
+
+    public function migrarAlInventario(Transferencia $transferencia, ?string $archivoFormularioFirmado): Transferencia
+    {
+        return DB::transaction(function () use (
+            $transferencia,
+            $archivoFormularioFirmado
+        ): Transferencia {
+            $transferencia->load([
+                'estado',
+                'usuarioSolicitante.oficina',
+                'usuarioSolicitante.direccion',
+                'usuarioSolicitante.area',
+                'expedientes.correccionArchivo',
+                'expedientes.serieDocumental',
+                'expedientes.soporte',
+            ]);
+            if ($transferencia->estado?->valor !== 'FINALIZADO') {
+                throw new \RuntimeException(
+                    'Solo se pueden migrar transferencias finalizadas.'
+                );
+            }
+            $estadoDisponible = Parametro::query()
+                ->where('grupo', 'ESTADO_EXPEDIENTE')
+                ->where('valor', 'DISPONIBLE')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $oficina = $transferencia->usuarioSolicitante?->oficina;
+            $direccion = $transferencia->usuarioSolicitante?->direccion;
+            $area = $transferencia->usuarioSolicitante?->area;
+            if (! $oficina || ! $direccion) {
+                throw new \RuntimeException(
+                    'El usuario remitente no tiene oficina o dirección configurada.'
+                );
+            }
+            foreach ($transferencia->expedientes->where('activo', true)->sortBy('id')->values() as $expediente) {
+                if (InventarioExpediente::query()->where('transferencia_expediente_id', $expediente->getKey())->exists())
+                    continue;
+                $correccion = $expediente->correccionArchivo;
+                $origen = $correccion ?? $expediente;
+                $siglaInventario = "{$oficina->sigla}/{$direccion->sigla}";
+                $codigoInventario = $this->generarCorrelativo($siglaInventario,0);
+                $inventario = InventarioExpediente::create([
+                    'codigo_inventario' => $codigoInventario,
+                    'oficina_parametro_id' => $oficina->getKey(),
+                    'direccion_parametro_id' => $direccion->getKey(),
+                    'area_parametro_id' => $area?->getKey(),
+                    'codigo_referencia' => $origen->codigo_referencia,
+                    'numero_caja' => $origen->numero_caja,
+                    'procedencia' => $origen->procedencia,
+                    'serie_documental_parametro_id' => $origen->serie_documental_parametro_id,
+                    'descripcion_lomo' => $origen->descripcion_lomo,
+                    'detalle' => $origen->detalle,
+                    'tomo_volumen' => $origen->tomo_volumen,
+                    'fojas' => $origen->fojas,
+                    'fechas_extremas' => $origen->fechas_extremas,
+                    'soporte_parametro_id' => $origen->soporte_parametro_id,
+                    'observaciones' => $origen->observaciones,
+                    'estado_parametro_id' => $estadoDisponible->getKey(),
+                    'origen' => 'TRANSFERENCIA',
+                    'transferencia_expediente_id' => $expediente->getKey(),
+                    'usuario_creacion_id' => Auth::id(),
+                ]);
+                InventarioHistorial::create([
+                    'inventario_expediente_id' => $inventario->getKey(),
+                    'accion' => 'MIGRAR DESDE TRANSFERENCIA',
+                    'estado_anterior_parametro_id' => null,
+                    'estado_nuevo_parametro_id' => $estadoDisponible->getKey(),
+                    'observacion' => $correccion
+                        ? 'Expediente migrado utilizando la corrección realizada por Archivo.'
+                        : 'Expediente migrado desde la transferencia.',
+                    'datos_anteriores' => null,
+                    'datos_nuevos' => $inventario->toArray(),
+                    'usuario_id' => Auth::id(),
+                    'fecha_accion' => now(),
+                ]);
+                $this->actualizarCorrelativo($siglaInventario,0,Auth::id());
+            }
+            $datosActualizacion = [
+                'usuario_actualizacion_id' => Auth::id(),
+            ];
+            if (filled($archivoFormularioFirmado))
+                $datosActualizacion['archivo_formulario_firmado'] = $archivoFormularioFirmado;
+            $transferencia->update($datosActualizacion);
+            TransferenciaHistorial::create([
+                'transferencia_id' => $transferencia->getKey(),
+                'estado_anterior_parametro_id' => $transferencia->estado_parametro_id,
+                'estado_nuevo_parametro_id' => $transferencia->estado_parametro_id,
+                'accion' => 'MIGRAR AL INVENTARIO',
+                'fecha_accion' => now(),
+                'observacion' => 'Transferencia migrada al inventario general.',
+                'usuario_id' => Auth::id(),
+            ]);
+            return $transferencia->fresh(['estado']);
+        });
+    }
+
+
 }

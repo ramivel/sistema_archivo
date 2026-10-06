@@ -87,6 +87,7 @@ class TransferenciasTable
                 self::rechazarAnulacionAction($user),
                 self::rechazarTransferenciaAction($user),
                 self::finalizarTransferenciaAction($user),
+                self::migrarInventarioAction($user),
             ])
             ->toolbarActions([
                 //
@@ -773,7 +774,16 @@ class TransferenciasTable
                 fn (Transferencia $record): bool =>
                     $user instanceof User
                     && $user->esEncargadoArchivo()
-                    && $record->estado?->valor === 'APROBADO'
+                    && (
+                    (
+                        $record->es_regularizacion
+                        && $record->estado?->valor === 'INICIADO'
+                    )
+                    || (
+                        ! $record->es_regularizacion
+                        && $record->estado?->valor === 'APROBADO'
+                    )
+                )
             )
             ->url(
                 fn (Transferencia $record): string =>
@@ -782,5 +792,80 @@ class TransferenciasTable
                         ['record' => $record]
                     )
             );
+    }
+
+    private static function migrarInventarioAction(?User $user): Action
+    {
+        return Action::make('migrarInventario')
+            ->label('Migrar expedientes al inventario general')
+            ->icon('heroicon-o-arrow-up-tray')
+            ->color('success')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && $user->esEncargadoArchivo()
+                    && $record->estado?->valor === 'FINALIZADO'
+                    && ! filled($record->archivo_formulario_firmado)
+            )
+            ->schema([
+                FileUpload::make('archivo_formulario_firmado')
+                    ->label('Formulario de transferencia firmado')
+                    ->disk('local')
+                    ->directory('transferencias/finalizados')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->maxSize(20480)
+                    ->required(
+                        fn (Transferencia $record): bool =>
+                            ! $record->es_regularizacion
+                    )
+                    ->downloadable()
+                    ->openable()
+                    ->getUploadedFileNameForStorageUsing(
+                        fn ($file): string =>
+                            'documento_finalizado_' .
+                            now()->format('Ymd_His') .
+                            '_' .
+                            \Illuminate\Support\Str::lower(
+                                \Illuminate\Support\Str::random(8)
+                            ) .
+                            '.pdf'
+                    )
+                    ->helperText(
+                        fn (Transferencia $record): string =>
+                            $record->es_regularizacion
+                                ? 'Documento PDF opcional para la regularización.'
+                                : 'Debe subir el formulario de transferencia y el formulario complementario firmados.'
+                    ),
+            ])
+            ->modalHeading(
+                fn (Transferencia $record): string =>
+                    $record->correlativo
+            )
+            ->modalDescription('Al confirmar, los expedientes serán registrados en el inventario general.')
+            ->modalSubmitActionLabel('Migrar al inventario')
+            ->modalCancelActionLabel('Cancelar')
+            ->action(function (
+                Transferencia $record,
+                array $data
+            ): void {
+                try {
+                    app(TransferenciaService::class)->migrarAlInventario(
+                        transferencia: $record,
+                        archivoFormularioFirmado: $data['archivo_formulario_firmado'] ?? null
+                    );
+                    Notification::make()
+                        ->success()
+                        ->title('Migración completada')
+                        ->body("Los expedientes de {$record->correlativo} " . 'fueron registrados en el inventario general.')
+                        ->send();
+                } catch (\Throwable $e) {
+                    Notification::make()
+                        ->danger()
+                        ->title('No se pudo migrar la transferencia')
+                        ->body($e->getMessage())
+                        ->persistent()
+                        ->send();
+                }
+            });
     }
 }
