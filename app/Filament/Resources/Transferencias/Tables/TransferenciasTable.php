@@ -78,6 +78,7 @@ class TransferenciasTable
             ->recordActions([
                 self::imprimirEtiquetasAction($user),
                 self::imprimirSolicitudAction($user),
+                self::imprimirFormularioComplementarioAction($user),
                 self::aprobarTransferenciaAction($user),
                 self::observarAction($user),
                 self::corregirAction($user),
@@ -733,6 +734,28 @@ class TransferenciasTable
                 fn (Transferencia $record): string =>
                     route(
                         'transferencias.imprimir-solicitud',
+                        ['transferencia' => $record]
+                    )
+            )
+            ->openUrlInNewTab();
+    }
+
+    private static function imprimirFormularioComplementarioAction(?User $user): Action
+    {
+        return Action::make('imprimirFormularioComplementario')
+            ->label('Imprimir formulario complementario')
+            ->icon('heroicon-o-document-arrow-down')
+            ->color('gray')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && $user->esEncargadoArchivo()
+                    && $record->correccionesArchivo()->exists()
+            )
+            ->url(
+                fn (Transferencia $record): string =>
+                    route(
+                        'transferencias.imprimir-formulario-complementario',
                         ['transferencia' => $record]
                     )
             )

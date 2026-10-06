@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 
 class TransferenciaPdf extends Fpdf
 {
@@ -491,6 +493,94 @@ class TransferenciaPdfService
         );
     }
 
+    public function descargarFormularioComplementario(Transferencia $transferencia)
+    {
+        $transferencia->loadMissing([
+            'fondo',
+            'subfondo',
+            'seccion',
+            'usuarioSolicitante',
+            'expedientes.correccionArchivo.serieDocumental',
+            'expedientes.correccionArchivo.soporte',
+        ]);
+        $expedientes = $transferencia->expedientes
+            ->where('activo', true)
+            ->filter(
+                fn (TransferenciaExpediente $expediente): bool =>
+                    $expediente->correccionArchivo !== null
+            )
+            ->sortBy('id')
+            ->values();
+
+        abort_if(
+            $expedientes->isEmpty(),
+            404,
+            'La transferencia no tiene expedientes corregidos por Archivo.'
+        );
+
+        $pdf = new TransferenciaPdf('P', 'mm', 'Letter');
+        $pdf->AliasNbPages();
+        $pdf->setBannerPath(resource_path('images/banner.png'));
+        $pdf->setFooterPath(resource_path('images/footer.png'));
+        $pdf->SetMargins(
+            self::MARGEN_LEFT_RIGHT_SOLICITUD,
+            self::MARGEN_TOP_SOLICITUD,
+            self::MARGEN_LEFT_RIGHT_SOLICITUD
+        );
+        $pdf->SetAutoPageBreak(
+            true,
+            $pdf->alturaFooter() + 16
+        );
+        $pdf->AddPage();
+
+        $qrPath = $this->crearArchivoQr(
+            $this->textoQrSolicitud($transferencia)
+        );
+
+        $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, 'B', 12);
+        $pdf->SetXY(10, self::MARGEN_TOP_SOLICITUD - 8);
+        $pdf->MultiCell(
+            0,
+            7,
+            $pdf->encode(
+                'FORMULARIO DE TRANSFERENCIA Y RELACIÓN DE ENTREGA DOCUMENTAL'
+            ),
+            0,
+            'C'
+        );
+
+        $pdf->SetXY(10, self::MARGEN_TOP_SOLICITUD - 1);
+        $pdf->Cell(
+            0,
+            7,
+            $pdf->encode($transferencia->correlativo),
+            0,
+            1,
+            'C'
+        );
+
+        $pdf->Image(
+            $qrPath,
+            175,
+            self::MARGEN_TOP_SOLICITUD + 8,
+            30,
+            0,
+            'PNG'
+        );
+
+        $this->eliminarArchivoTemporal($qrPath);
+        $this->agregarDatosGeneralesComplementario($pdf, $transferencia);
+        $this->agregarTablaExpedientesComplementaria($pdf, $expedientes);
+        $this->agregarFirmaResponsableArchivo($pdf);
+
+        return $this->respuestaPdf(
+            $pdf,
+            $this->sanitizarNombreArchivo(
+                'formulario_complementario_' . $transferencia->correlativo
+            ) . '.pdf'
+        );
+    }
+
     private function agregarDatosGenerales(TransferenciaPdf $pdf, Transferencia $transferencia): void
     {
         $datos = array(
@@ -508,6 +598,47 @@ class TransferenciaPdfService
             $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, '', 10);
             $pdf->Cell(0,5,$pdf->encode($fila[1]),0,1,'L');
         }
+        $pdf->Ln(self::ESPACIO_ANTES_TABLA);
+    }
+
+    private function agregarDatosGeneralesComplementario(TransferenciaPdf $pdf, Transferencia $transferencia): void
+    {
+        $datos = [
+            ['FONDO', $transferencia->fondo?->valor ?? '-'],
+            ['SUBFONDO', $transferencia->subfondo?->valor ?? '-'],
+            ['SECCIÓN', $transferencia->seccion?->valor ?? '-'],
+            ['USUARIO ARCHIVO', $this->usuarioArchivo()],
+            ['FECHA INICIO', $transferencia->fecha_solicitud?->format('d/m/Y H:i') ?? '-'],
+            ['TOTAL EXPEDIENTES', (string) $transferencia->total_expedientes],
+        ];
+
+        $pdf->SetXY(
+            self::MARGEN_LEFT_RIGHT_SOLICITUD,
+            self::MARGEN_TOP_SOLICITUD + 10
+        );
+
+        foreach ($datos as $fila) {
+            $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, 'B', 10);
+            $pdf->Cell(
+                45,
+                5,
+                $pdf->encode($fila[0] . ':'),
+                0,
+                0,
+                'R'
+            );
+
+            $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, '', 10);
+            $pdf->Cell(
+                0,
+                5,
+                $pdf->encode($fila[1]),
+                0,
+                1,
+                'L'
+            );
+        }
+
         $pdf->Ln(self::ESPACIO_ANTES_TABLA);
     }
 
@@ -564,6 +695,111 @@ class TransferenciaPdfService
         }
     }
 
+    private function agregarTablaExpedientesComplementaria(
+        TransferenciaPdf $pdf,
+        Collection $expedientes
+    ): void {
+        $anchos = self::SOLICITUD_ANCHOS_COLUMNAS;
+        $cabeceras = self::SOLICITUD_CABECERAS;
+
+        $agregarEncabezado = function () use (
+            $pdf,
+            $anchos,
+            $cabeceras
+        ): void {
+            $pdf->SetXY(
+                self::MARGEN_LEFT_TABLE,
+                $pdf->GetY() - 5
+            );
+
+            $pdf->headerRow($anchos, $cabeceras);
+        };
+
+        $agregarEncabezado();
+
+        $huboTextoRecortado = false;
+
+        foreach ($expedientes as $expediente) {
+            $correccion = $expediente->correccionArchivo;
+
+            $detallePdf = $this->prepararDetallePdf(
+                $pdf,
+                $correccion->detalle,
+                $anchos[5]
+            );
+
+            if ($detallePdf['recortado']) {
+                $huboTextoRecortado = true;
+            }
+
+            $datosFila = [
+                $correccion->codigo_referencia ?? '-',
+                $correccion->numero_caja ?? '-',
+                $correccion->procedencia ?? '-',
+                $correccion->serieDocumental?->valor ?? '-',
+                $correccion->descripcion_lomo ?? '-',
+                $detallePdf['texto'],
+                $correccion->tomo_volumen ?? '-',
+                $correccion->fojas ?? '-',
+                $correccion->fechas_extremas ?? '-',
+                $correccion->soporte?->valor ?? '-',
+                $correccion->observaciones ?? '-',
+            ];
+
+            $altoFila = $pdf->rowHeight(
+                $anchos,
+                $datosFila,
+                self::ALTURA_LINEA_TABLA,
+                self::TAMANIO_FUENTE_TABLA
+            );
+
+            if (
+                $pdf->GetY() + $altoFila
+                > $pdf->limiteContenidoInferior()
+            ) {
+                $pdf->AddPage();
+                $agregarEncabezado();
+            }
+
+            $pdf->SetX(self::MARGEN_LEFT_TABLE);
+            $pdf->row(
+                $anchos,
+                $datosFila,
+                self::ALTURA_LINEA_TABLA,
+                self::TAMANIO_FUENTE_TABLA,
+                self::SOLICITUD_ALINEACION
+            );
+        }
+
+        if ($huboTextoRecortado) {
+            $leyenda = ' [...] DEBIDO A QUE EL TEXTO ES DEMASIADO EXTENSO, '
+                . 'SE RECORTÓ. PARA VERIFICAR EL TEXTO COMPLETO, '
+                . 'CONSULTE LA DESCRIPCIÓN DEL EXPEDIENTE DIRECTAMENTE '
+                . 'EN EL SISTEMA.';
+
+            if (
+                $pdf->GetY() + 12
+                > $pdf->limiteContenidoInferior()
+            ) {
+                $pdf->AddPage();
+            }
+
+            $pdf->SetX(self::MARGEN_LEFT_TABLE);
+            $pdf->SetFont(
+                TransferenciaPdf::FUENTE_TEXTO,
+                'I',
+                self::TAMANIO_FUENTE_TABLA
+            );
+            $pdf->MultiCell(
+                array_sum($anchos),
+                4,
+                $pdf->encode($leyenda),
+                0,
+                'L'
+            );
+        }
+    }
+
     private function agregarFirmas(TransferenciaPdf $pdf): void
     {
         $ancho = self::FIRMA_ANCHO;
@@ -589,6 +825,59 @@ class TransferenciaPdfService
             $pdf->SetXY($x + 2, $y + $alto - $altoTexto - 3);
             $pdf->MultiCell($ancho - 4,$altoLinea,$pdf->encode($texto),0,'C');
         }
+    }
+
+    private function agregarFirmaResponsableArchivo(
+        TransferenciaPdf $pdf
+    ): void {
+        $ancho = self::FIRMA_ANCHO;
+        $alto = self::FIRMA_ALTO;
+        $altoLinea = self::FIRMA_ALTO_LINEA;
+
+        if (
+            $pdf->GetY() + $alto
+            > $pdf->limiteContenidoInferior()
+        ) {
+            $pdf->AddPage();
+        }
+
+        $pdf->Ln(8);
+
+        $x = (
+            $pdf->GetPageWidth() - $ancho
+        ) / 2;
+
+        $y = $pdf->GetY();
+
+        $texto = "FIRMA Y SELLO\nRESPONSABLE DE ARCHIVO";
+
+        $pdf->Rect($x, $y, $ancho, $alto);
+
+        $pdf->SetFont(
+            TransferenciaPdf::FUENTE_TEXTO,
+            'B',
+            10
+        );
+
+        $lineas = $pdf->lineCount(
+            $ancho - 4,
+            $texto
+        );
+
+        $altoTexto = $lineas * $altoLinea;
+
+        $pdf->SetXY(
+            $x + 2,
+            $y + $alto - $altoTexto - 3
+        );
+
+        $pdf->MultiCell(
+            $ancho - 4,
+            $altoLinea,
+            $pdf->encode($texto),
+            0,
+            'C'
+        );
     }
 
     private function crearArchivoQr(string $contenido): string
@@ -704,5 +993,14 @@ class TransferenciaPdfService
         $nombre = preg_replace('/[\x00-\x1F]/u',$reemplazo,$nombre) ?: '';
         $nombre = preg_replace('/\s+/',$reemplazo,$nombre) ?: '';
         return trim($nombre, $reemplazo . '. ') ?: 'archivo';
+    }
+
+    private function usuarioArchivo(): string
+    {
+        $usuario = Auth::user();
+        return trim(
+            ($usuario?->nombres ?? '') . ' ' .
+            ($usuario?->apellidos ?? '')
+        ) ?: ($usuario?->usuario ?? '-');
     }
 }

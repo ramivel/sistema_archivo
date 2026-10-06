@@ -45,3 +45,15 @@ Route::middleware('auth')->get(
         return $service->descargarSolicitud($transferencia);
     }
 )->name('transferencias.imprimir-solicitud');
+
+Route::middleware('auth')->get(
+    '/transferencias/{transferencia}/imprimir-formulario-complementario',
+    function (
+        Transferencia $transferencia,
+        TransferenciaPdfService $service
+    ) {
+        return $service->descargarFormularioComplementario(
+            $transferencia
+        );
+    }
+)->name('transferencias.imprimir-formulario-complementario');
