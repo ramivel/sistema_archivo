@@ -157,4 +157,9 @@ class User extends Authenticatable implements HasName
         return $this->tienePerfil('TRANSFERENCIAS');
     }
 
+    public function esConsultas(): bool
+    {
+        return $this->tienePerfil('CONSULTAS');
+    }
+
 }
