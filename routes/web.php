@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\PlantillaTransferenciaExcelService;
+use App\Services\TransferenciaService;
 use Illuminate\Support\Facades\Route;
 use App\Models\Transferencia;
 use App\Services\TransferenciaPdfService;
@@ -57,3 +58,23 @@ Route::middleware('auth')->get(
         );
     }
 )->name('transferencias.imprimir-formulario-complementario');
+
+Route::middleware('auth')->get(
+    '/transferencias/{transferencia}/documento/{tipo}',
+    function (
+        Transferencia $transferencia,
+        string $tipo,
+        TransferenciaService $service
+    ) {
+        $ruta = $service->obtenerRutaDocumento(
+            transferencia: $transferencia,
+            tipo: $tipo
+        );
+        if ($tipo === 'archivo-excel') {
+            return response()->download($ruta);
+        }
+        return response()->file($ruta, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+)->name('transferencias.documento');

@@ -17,6 +17,8 @@ use Filament\Tables\Table;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\FileUpload;
+use Filament\Actions\ActionGroup;
+use Filament\Tables\Enums\RecordActionsPosition;
 
 class TransferenciasTable
 {
@@ -73,26 +75,27 @@ class TransferenciasTable
                         'apellidos',
                     ]),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
-                self::imprimirEtiquetasAction($user),
-                self::imprimirSolicitudAction($user),
-                self::imprimirFormularioComplementarioAction($user),
-                self::aprobarTransferenciaAction($user),
-                self::observarAction($user),
-                self::corregirAction($user),
-                self::solicitarAnulacionAction($user),
-                self::aprobarAnulacionAction($user),
-                self::rechazarAnulacionAction($user),
-                self::rechazarTransferenciaAction($user),
-                self::finalizarTransferenciaAction($user),
-                self::migrarInventarioAction($user),
+                ActionGroup::make([
+                    self::verTransferenciaAction($user),
+                    self::imprimirEtiquetasAction($user),
+                    self::imprimirSolicitudAction($user),
+                    self::imprimirFormularioComplementarioAction($user),
+                    self::aprobarTransferenciaAction($user),
+                    self::observarAction($user),
+                    self::corregirAction($user),
+                    self::solicitarAnulacionAction($user),
+                    self::aprobarAnulacionAction($user),
+                    self::rechazarAnulacionAction($user),
+                    self::rechazarTransferenciaAction($user),
+                    self::finalizarTransferenciaAction($user),
+                    self::migrarInventarioAction($user),
+                ])
+                    ->label('Acciones')
+                    ->icon('heroicon-o-ellipsis-vertical')
+                    ->color('gray'),
             ])
-            ->toolbarActions([
-                //
-            ])
+            ->recordActionsPosition(RecordActionsPosition::BeforeColumns)
             ->defaultSort('fecha_solicitud', 'desc')
             ->paginated([500, 1000])
             ->defaultPaginationPageOption(500)
@@ -103,7 +106,7 @@ class TransferenciasTable
     private static function aprobarTransferenciaAction(?User $user): Action
     {
         return Action::make('aprobarTransferencia')
-            ->label('Aprobar transferencia')
+            ->label('Aprobar Transferencia')
             ->icon('heroicon-o-check-circle')
             ->color('success')
             ->visible(
@@ -152,7 +155,7 @@ class TransferenciasTable
     private static function observarAction(?User $user): Action
     {
         return Action::make('observar')
-            ->label('Observar transferencia')
+            ->label('Observar Transferencia')
             ->icon('heroicon-o-eye')
             ->color('warning')
             ->visible(
@@ -410,7 +413,7 @@ class TransferenciasTable
     private static function solicitarAnulacionAction(?User $user): Action
     {
         return Action::make('solicitarAnulacion')
-            ->label('Solicitar anulación')
+            ->label('Solicitar Anulación')
             ->icon('heroicon-o-x-circle')
             ->color('danger')
             ->visible(
@@ -484,7 +487,7 @@ class TransferenciasTable
     private static function aprobarAnulacionAction(?User $user): Action
     {
         return Action::make('aprobarAnulacion')
-            ->label('Aprobar anulación')
+            ->label('Aprobar Anulación')
             ->icon('heroicon-o-check-circle')
             ->color('success')
             ->visible(
@@ -528,7 +531,7 @@ class TransferenciasTable
     private static function rechazarAnulacionAction(?User $user): Action
     {
         return Action::make('rechazarAnulacion')
-            ->label('Rechazar anulación')
+            ->label('Rechazar Anulación')
             ->icon('heroicon-o-arrow-uturn-left')
             ->color('warning')
             ->visible(
@@ -593,7 +596,7 @@ class TransferenciasTable
     private static function rechazarTransferenciaAction(?User $user): Action
     {
         return Action::make('rechazarTransferencia')
-            ->label('Rechazar transferencia')
+            ->label('Rechazar Transferencia')
             ->icon('heroicon-o-x-circle')
             ->color('danger')
             ->visible(
@@ -689,7 +692,7 @@ class TransferenciasTable
     private static function imprimirEtiquetasAction(?User $user): Action
     {
         return Action::make('imprimirEtiquetas')
-            ->label('Imprimir Etiquetas')
+            ->label('Etiquetas')
             ->icon('heroicon-o-qr-code')
             ->color('gray')
             ->visible(
@@ -726,7 +729,7 @@ class TransferenciasTable
     private static function imprimirSolicitudAction(?User $user): Action
     {
         return Action::make('imprimirSolicitud')
-            ->label('Imprimir Formulario Transferencia')
+            ->label('Formulario Transferencia')
             ->icon('heroicon-o-document-arrow-down')
             ->color('gray')
             ->visible(
@@ -754,7 +757,7 @@ class TransferenciasTable
     private static function imprimirFormularioComplementarioAction(?User $user): Action
     {
         return Action::make('imprimirFormularioComplementario')
-            ->label('Imprimir Formulario Complementario')
+            ->label('Formulario Complementario')
             ->icon('heroicon-o-document-arrow-down')
             ->color('gray')
             ->visible(
@@ -777,7 +780,7 @@ class TransferenciasTable
         ?User $user
     ): Action {
         return Action::make('finalizarTransferencia')
-            ->label('Finalizar transferencia')
+            ->label('Finalizar Transferencia')
             ->icon('heroicon-o-check-badge')
             ->color('success')
             ->visible(
@@ -877,5 +880,27 @@ class TransferenciasTable
                         ->send();
                 }
             });
+    }
+
+    private static function verTransferenciaAction(?User $user): Action
+    {
+        return Action::make('verTransferencia')
+            ->label('Ver')
+            ->icon('heroicon-o-eye')
+            ->color('gray')
+            ->visible(
+                fn (Transferencia $record): bool =>
+                    $user instanceof User
+                    && (
+                        $user->esEncargadoArchivo()
+                        || (
+                            $user->esTransferencias()
+                            && $record->usuario_solicitante_id === $user->id
+                        )
+                    )
+            )
+            ->url(
+                fn (Transferencia $record): string => TransferenciaResource::getUrl('ver', ['record' => $record])
+            );
     }
 }

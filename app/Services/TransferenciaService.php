@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use App\Models\Parametro;
 use App\Models\Transferencia;
 use App\Models\TransferenciaExpediente;
@@ -11,6 +12,7 @@ use App\Models\InventarioExpediente;
 use App\Models\InventarioHistorial;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TransferenciaService
 {
@@ -801,6 +803,39 @@ class TransferenciaService
             trim((string) $valor),
             'UTF-8'
         );
+    }
+
+    public function obtenerRutaDocumento(Transferencia $transferencia, string $tipo): string
+    {
+        $usuario = User::find(Auth::id());
+        abort_unless(
+            $usuario
+            && (
+                $usuario->esEncargadoArchivo()
+                || (
+                    $usuario->esTransferencias()
+                    && $transferencia->usuario_solicitante_id === $usuario->id
+                )
+            ),
+            403
+        );
+        if ($tipo === 'archivo-excel') {
+            abort_unless(
+                $usuario->esEncargadoArchivo(),
+                403
+            );
+        }
+        $campo = match ($tipo) {
+            'archivo-excel' => 'archivo_excel',
+            'nota-rechazo' => 'archivo_nota_rechazo',
+            'formulario-firmado' => 'archivo_formulario_firmado',
+            default => abort(404),
+        };
+        $archivo = $transferencia->{$campo};
+        abort_unless(filled($archivo), 404);
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($archivo), 404);
+        return $disk->path($archivo);
     }
 
 }

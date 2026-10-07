@@ -7,6 +7,7 @@ use App\Filament\Resources\Transferencias\Pages\ListTransferencias;
 use App\Filament\Resources\Transferencias\Pages\RegularizarInventario;
 use App\Filament\Resources\Transferencias\Pages\CorregirTransferencia;
 use App\Filament\Resources\Transferencias\Pages\FinalizarTransferencia;
+use App\Filament\Resources\Transferencias\Pages\VerTransferencia;
 use App\Filament\Resources\Transferencias\Tables\TransferenciasTable;
 use App\Models\User;
 use App\Models\Transferencia;
@@ -95,6 +96,7 @@ class TransferenciaResource extends Resource
             'regularizar' => RegularizarInventario::route('/regularizar'),
             'corregir' => CorregirTransferencia::route('/{record}/corregir'),
             'finalizar' => FinalizarTransferencia::route('/{record}/finalizar'),
+            'ver' => VerTransferencia::route('/{record}/ver'),
         ];
     }
 }
