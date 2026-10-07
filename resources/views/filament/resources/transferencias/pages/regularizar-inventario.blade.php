@@ -48,8 +48,7 @@
     @endif
 
     @if (
-        $archivoValidado
-        && $resultadoValidacion
+        $resultadoValidacion
         && ! empty($resultadoValidacion['errores_generales'])
     )
         <x-filament::section class="mt-3">
@@ -67,8 +66,7 @@
     @endif
 
     @if (
-        $archivoValidado
-        && $resultadoValidacion
+        $resultadoValidacion
         && ! empty($resultadoValidacion['errores'])
     )
         <x-filament::section class="mt-3">

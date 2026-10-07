@@ -95,4 +95,12 @@ class TransferenciaExpediente extends Model
             'transferencia_expediente_id'
         );
     }
+
+    public function inventario(): HasOne
+    {
+        return $this->hasOne(
+            InventarioExpediente::class,
+            'transferencia_expediente_id'
+        );
+    }
 }

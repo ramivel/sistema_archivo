@@ -410,6 +410,12 @@ class ParametrosSeeder extends Seeder
                 'descripcion' => 'ESTADO GENERADO CUANDO EL USUARIO ENCARGADO ARCHIVO RECIBE Y VALIDA EL FORMULARIO DE TRANSFERENCIA Y LOS EXPEDIENTES FÍSICOS. REPRESENTA LA CONCLUSIÓN DEL PROCESO DE TRANSFERENCIA. POSTERIORMENTE, LA INFORMACIÓN PASARÁ AL INVENTARIO DEL SISTEMA.',
                 'orden' => 8,
             ],
+            [
+                'grupo' => 'ESTADO_TRANSFERENCIA',
+                'valor' => 'INVENTARIADO',
+                'descripcion' => 'ESTADO GENERADO CUANDO LOS EXPEDIENTES DE LA TRANSFERENCIA HAN SIDO INCORPORADOS CORRECTAMENTE AL INVENTARIO GENERAL DEL ARCHIVO.',
+                'orden' => 9,
+            ],
             // =====================================================
             // 10. ESTADO EXPEDIENTE
             // =====================================================

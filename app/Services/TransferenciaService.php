@@ -61,10 +61,7 @@ class TransferenciaService
                 ->whereNull('fecha_eliminacion')
                 ->get()
                 ->keyBy(
-                    fn (Parametro $parametro) => mb_strtoupper(
-                        trim((string) $parametro->valor),
-                        'UTF-8'
-                    )
+                    fn (Parametro $parametro) => $this->normalizarTexto($parametro->valor)
                 );
             $soportes = Parametro::query()
                 ->where('grupo', 'SOPORTE')
@@ -72,10 +69,7 @@ class TransferenciaService
                 ->whereNull('fecha_eliminacion')
                 ->get()
                 ->keyBy(
-                    fn (Parametro $parametro) => mb_strtoupper(
-                        trim((string) $parametro->valor),
-                        'UTF-8'
-                    )
+                    fn (Parametro $parametro) => $this->normalizarTexto($parametro->valor)
                 );
             $sigla = $this->generarSigla($fondo, $subfondo, $esRegularizacion);
             $correlativo = $this->generarCorrelativo($sigla, $anio);
@@ -105,8 +99,8 @@ class TransferenciaService
                         'La procedencia es obligatoria para todos los expedientes.'
                     );
                 }
-                $serie = $series->get(mb_strtoupper(trim((string) $expediente['serie_documental']),'UTF-8'));
-                $soporte = $soportes->get(mb_strtoupper(trim((string) $expediente['soporte']),'UTF-8'));
+                $serie = $series->get($this->normalizarTexto($expediente['serie_documental']));
+                $soporte = $soportes->get($this->normalizarTexto($expediente['soporte']));
                 if (! $serie || ! $soporte) {
                     throw new \RuntimeException(
                         'No se encontró una parametrización requerida durante el guardado.'
@@ -114,17 +108,31 @@ class TransferenciaService
                 }
                 TransferenciaExpediente::create([
                     'transferencia_id' => $transferencia->id,
-                    'codigo_referencia' => $expediente['codigo_referencia'],
-                    'numero_caja' => $expediente['numero_caja'] ?? null,
-                    'procedencia' => $procedencia,
+                    'codigo_referencia' => $this->normalizarTexto(
+                        $expediente['codigo_referencia']
+                    ),
+                    'numero_caja' => $this->normalizarTexto(
+                        $expediente['numero_caja'] ?? null
+                    ),
+                    'procedencia' => $this->normalizarTexto($procedencia),
                     'serie_documental_parametro_id' => $serie->id,
-                    'descripcion_lomo' => $expediente['descripcion_lomo'],
-                    'detalle' => $expediente['detalle'],
+                    'descripcion_lomo' => $this->normalizarTexto(
+                        $expediente['descripcion_lomo']
+                    ),
+                    'detalle' => $this->normalizarTexto(
+                        $expediente['detalle']
+                    ),
                     'tomo_volumen' => $expediente['tomo_volumen'],
-                    'fojas' => $expediente['fojas'],
-                    'fechas_extremas' => $expediente['fechas_extremas'],
+                    'fojas' => $this->normalizarTexto(
+                        $expediente['fojas']
+                    ),
+                    'fechas_extremas' => $this->normalizarTexto(
+                        $expediente['fechas_extremas']
+                    ),
                     'soporte_parametro_id' => $soporte->id,
-                    'observaciones' => $expediente['observaciones'],
+                    'observaciones' => $this->normalizarTexto(
+                        $expediente['observaciones']
+                    ),
                     'usuario_creacion_id' => $usuarioId,
                 ]);
             }
@@ -216,7 +224,7 @@ class TransferenciaService
                 ->whereNull('fecha_eliminacion')
                 ->firstOrFail();
             $usuarioId = Auth::id();
-            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            $observacion = $this->normalizarTexto($observacion);
             $transferencia->update([
                 'estado_parametro_id' => $estadoObservado->id,
                 'usuario_actualizacion_id' => $usuarioId,
@@ -359,7 +367,7 @@ class TransferenciaService
                 ->where('activo', true)
                 ->whereNull('fecha_eliminacion')
                 ->firstOrFail();
-            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            $observacion = $this->normalizarTexto($observacion);
             if ($observacion === '') {
                 throw new \RuntimeException(
                     'Debe registrar el motivo de la anulación.'
@@ -444,7 +452,7 @@ class TransferenciaService
                 )
                 ->where('grupo', 'ESTADO_TRANSFERENCIA')
                 ->firstOrFail();
-            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            $observacion = $this->normalizarTexto($observacion);
             if ($observacion === '') {
                 throw new \RuntimeException(
                     'Debe registrar el motivo del rechazo.'
@@ -538,7 +546,7 @@ class TransferenciaService
                 ->where('activo', true)
                 ->whereNull('fecha_eliminacion')
                 ->firstOrFail();
-            $observacion = trim(mb_strtoupper($observacion, 'UTF-8'));
+            $observacion = $this->normalizarTexto($observacion);
             if ($observacion === '') {
                 throw new \RuntimeException(
                     'Debe registrar la observación del rechazo.'
@@ -666,8 +674,10 @@ class TransferenciaService
         });
     }
 
-    public function migrarAlInventario(Transferencia $transferencia, ?string $archivoFormularioFirmado): Transferencia
-    {
+    public function migrarAlInventario(
+        Transferencia $transferencia,
+        ?string $archivoFormularioFirmado
+    ): Transferencia {
         return DB::transaction(function () use (
             $transferencia,
             $archivoFormularioFirmado
@@ -683,12 +693,18 @@ class TransferenciaService
             ]);
             if ($transferencia->estado?->valor !== 'FINALIZADO') {
                 throw new \RuntimeException(
-                    'Solo se pueden migrar transferencias finalizadas.'
+                    'Solo se pueden incorporar transferencias finalizadas.'
                 );
             }
             $estadoDisponible = Parametro::query()
                 ->where('grupo', 'ESTADO_EXPEDIENTE')
                 ->where('valor', 'DISPONIBLE')
+                ->where('activo', true)
+                ->whereNull('fecha_eliminacion')
+                ->firstOrFail();
+            $estadoInventariado = Parametro::query()
+                ->where('grupo', 'ESTADO_TRANSFERENCIA')
+                ->where('valor', 'INVENTARIADO')
                 ->where('activo', true)
                 ->whereNull('fecha_eliminacion')
                 ->firstOrFail();
@@ -700,9 +716,22 @@ class TransferenciaService
                     'El usuario remitente no tiene oficina o dirección configurada.'
                 );
             }
-            foreach ($transferencia->expedientes->where('activo', true)->sortBy('id')->values() as $expediente) {
-                if (InventarioExpediente::query()->where('transferencia_expediente_id', $expediente->getKey())->exists())
+            foreach (
+                $transferencia->expedientes
+                    ->where('activo', true)
+                    ->sortBy('id')
+                    ->values() as $expediente
+            ) {
+                if (
+                    InventarioExpediente::query()
+                        ->where(
+                            'transferencia_expediente_id',
+                            $expediente->getKey()
+                        )
+                        ->exists()
+                ) {
                     continue;
+                }
                 $correccion = $expediente->correccionArchivo;
                 $origen = $correccion ?? $expediente;
                 $siglaInventario = "{$oficina->sigla}/{$direccion->sigla}";
@@ -730,20 +759,21 @@ class TransferenciaService
                 ]);
                 InventarioHistorial::create([
                     'inventario_expediente_id' => $inventario->getKey(),
-                    'accion' => 'MIGRAR DESDE TRANSFERENCIA',
+                    'accion' => 'INCORPORAR DESDE TRANSFERENCIA',
                     'estado_anterior_parametro_id' => null,
                     'estado_nuevo_parametro_id' => $estadoDisponible->getKey(),
                     'observacion' => $correccion
-                        ? 'Expediente migrado utilizando la corrección realizada por Archivo.'
-                        : 'Expediente migrado desde la transferencia.',
+                        ? 'Expediente incorporado utilizando la corrección realizada por Archivo.'
+                        : 'Expediente incorporado desde la transferencia.',
                     'datos_anteriores' => null,
                     'datos_nuevos' => $inventario->toArray(),
                     'usuario_id' => Auth::id(),
                     'fecha_accion' => now(),
                 ]);
-                $this->actualizarCorrelativo($siglaInventario,0,Auth::id());
+                $this->actualizarCorrelativo($siglaInventario, 0, Auth::id());
             }
             $datosActualizacion = [
+                'estado_parametro_id' => $estadoInventariado->getKey(),
                 'usuario_actualizacion_id' => Auth::id(),
             ];
             if (filled($archivoFormularioFirmado))
@@ -752,15 +782,25 @@ class TransferenciaService
             TransferenciaHistorial::create([
                 'transferencia_id' => $transferencia->getKey(),
                 'estado_anterior_parametro_id' => $transferencia->estado_parametro_id,
-                'estado_nuevo_parametro_id' => $transferencia->estado_parametro_id,
-                'accion' => 'MIGRAR AL INVENTARIO',
+                'estado_nuevo_parametro_id' => $estadoInventariado->getKey(),
+                'accion' => 'INCORPORAR AL INVENTARIO',
                 'fecha_accion' => now(),
-                'observacion' => 'Transferencia migrada al inventario general.',
+                'observacion' => 'Transferencia incorporada al inventario general.',
                 'usuario_id' => Auth::id(),
             ]);
             return $transferencia->fresh(['estado']);
         });
     }
 
+    private function normalizarTexto(mixed $valor): ?string
+    {
+        if (blank($valor)) {
+            return null;
+        }
+        return mb_strtoupper(
+            trim((string) $valor),
+            'UTF-8'
+        );
+    }
 
 }

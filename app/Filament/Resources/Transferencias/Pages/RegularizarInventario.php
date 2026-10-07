@@ -34,7 +34,7 @@ class RegularizarInventario extends Page
 
     public function getTitle(): string
     {
-        return 'Regularizar Inventario';
+        return 'Regularizar Transferencia';
     }
 
     public function form(Schema $schema): Schema
@@ -224,11 +224,10 @@ class RegularizarInventario extends Page
                 Storage::disk('local')->delete($archivo);
                 $this->data['archivo_excel'] = null;
                 $this->archivoValidado = false;
-                $erroresGenerales = $resultado['errores_generales'] ?? [];
                 Notification::make()
                     ->danger()
-                    ->title('Archivo con errores')
-                    ->body(implode("\n", $erroresGenerales))
+                    ->title('Archivo inválido')
+                    ->body('El archivo contiene errores. Revise el detalle mostrado en la sección de errores.')
                     ->persistent()
                     ->send();
                 return;

@@ -207,6 +207,8 @@ class TransferenciaExcelService
         bool $esRegularizacion,
     ): array {
         $errores = [];
+
+        $indiceProcedencia = $esRegularizacion ? 2 : null;
         $indiceSerie = $esRegularizacion ? 3 : 2;
         $indiceDescripcion = $esRegularizacion ? 4 : 3;
         $indiceDetalle = $esRegularizacion ? 5 : 4;
@@ -214,42 +216,165 @@ class TransferenciaExcelService
         $indiceFojas = $esRegularizacion ? 7 : 6;
         $indiceFechas = $esRegularizacion ? 8 : 7;
         $indiceSoporte = $esRegularizacion ? 9 : 8;
+        $indiceObservaciones = $esRegularizacion ? 10 : 9;
+
         if ($this->vacio($valores[0])) {
             $errores[] =
                 "CELDA A{$fila}: CODIGO DE REFERENCIA es obligatorio.";
-        }
-        if ($esRegularizacion && $this->vacio($valores[2])) {
+        } elseif (mb_strlen(trim((string) $valores[0])) > 50) {
             $errores[] =
-                "CELDA C{$fila}: PROCEDENCIA es obligatorio.";
+                "CELDA A{$fila}: CODIGO DE REFERENCIA no puede superar los 50 caracteres.";
         }
+
+        if (
+            $esRegularizacion
+            && $this->vacio($valores[$indiceProcedencia])
+        ) {
+            $errores[] =
+                "CELDA C{$fila}: PROCEDENCIA es obligatoria.";
+        }
+
+        if (
+            ! $this->vacio($valores[1])
+            && (
+                mb_strlen(trim((string) $valores[1])) > 20
+                || ! preg_match(
+                    '/^[1-9][0-9]*(\/[1-9][0-9]*)?$/',
+                    trim((string) $valores[1])
+                )
+            )
+        ) {
+            $errores[] =
+                "CELDA B{$fila}: N° DE CAJA debe tener un formato válido, por ejemplo 1, 2, 3, 1/3, 2/3 o 3/3.";
+        }
+
         if ($this->vacio($valores[$indiceSerie])) {
             $columna = $this->numeroColumna($indiceSerie);
-            $errores[] = "CELDA {$columna}{$fila}: SERIE DOCUMENTAL es obligatorio.";
-        } elseif (! $this->existeParametro('SERIE_DOCUMENTAL', $valores[$indiceSerie])) {
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: SERIE DOCUMENTAL es obligatoria.";
+        } elseif (
+            ! $this->existeParametro(
+                'SERIE_DOCUMENTAL',
+                $valores[$indiceSerie]
+            )
+        ) {
             $columna = $this->numeroColumna($indiceSerie);
-            $errores[] = "CELDA {$columna}{$fila}: SERIE DOCUMENTAL " . "\"{$valores[$indiceSerie]}\" no existe.";
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: SERIE DOCUMENTAL "
+                . "\"{$valores[$indiceSerie]}\" no existe.";
         }
+
+        if ($this->vacio($valores[$indiceDescripcion])) {
+            $columna = $this->numeroColumna($indiceDescripcion);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: DESCRIPCION DOCUMENTAL (LOMO) es obligatoria.";
+        }
+
+        if ($this->vacio($valores[$indiceDetalle])) {
+            $columna = $this->numeroColumna($indiceDetalle);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: DETALLE es obligatorio.";
+        }
+
+        if ($this->vacio($valores[$indiceTomo])) {
+            $columna = $this->numeroColumna($indiceTomo);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: TOMO / VOLUMEN es obligatorio.";
+        } elseif (
+            ! preg_match(
+                '/^[1-9][0-9]*$/',
+                trim((string) $valores[$indiceTomo])
+            )
+        ) {
+            $columna = $this->numeroColumna($indiceTomo);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: TOMO / VOLUMEN debe ser un número entero mayor o igual a 1.";
+        }
+
+        if ($this->vacio($valores[$indiceFojas])) {
+            $columna = $this->numeroColumna($indiceFojas);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: FOJAS es obligatorio.";
+        } else {
+            $fojas = preg_replace(
+                '/\s+/',
+                '',
+                mb_strtoupper(
+                    trim((string) $valores[$indiceFojas]),
+                    'UTF-8'
+                )
+            );
+
+            if (mb_strlen($fojas) > 30) {
+                $columna = $this->numeroColumna($indiceFojas);
+
+                $errores[] =
+                    "CELDA {$columna}{$fila}: FOJAS no puede superar los 30 caracteres.";
+            } elseif (! preg_match('/^(S\/F|[0-9-]+)$/i', $fojas)) {
+                $columna = $this->numeroColumna($indiceFojas);
+
+                $errores[] =
+                    "CELDA {$columna}{$fila}: FOJAS debe contener números, rangos con guion o S/F.";
+            }
+        }
+
+        if ($this->vacio($valores[$indiceFechas])) {
+            $columna = $this->numeroColumna($indiceFechas);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: FECHAS EXTREMAS es obligatorio.";
+        } else {
+            $fechas = preg_replace(
+                '/\s+/',
+                '',
+                trim((string) $valores[$indiceFechas])
+            );
+
+            if (mb_strlen($fechas) > 30) {
+                $columna = $this->numeroColumna($indiceFechas);
+
+                $errores[] =
+                    "CELDA {$columna}{$fila}: FECHAS EXTREMAS no puede superar los 30 caracteres.";
+            } elseif (! preg_match('/^[0-9-]+$/', $fechas)) {
+                $columna = $this->numeroColumna($indiceFechas);
+
+                $errores[] =
+                    "CELDA {$columna}{$fila}: FECHAS EXTREMAS debe contener un año o un rango de años.";
+            }
+        }
+
         if ($this->vacio($valores[$indiceSoporte])) {
             $columna = $this->numeroColumna($indiceSoporte);
-            $errores[] = "CELDA {$columna}{$fila}: SOPORTE es obligatorio.";
-        } elseif (! $this->existeParametro('SOPORTE', $valores[$indiceSoporte])) {
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: SOPORTE es obligatorio.";
+        } elseif (
+            ! $this->existeParametro(
+                'SOPORTE',
+                $valores[$indiceSoporte]
+            )
+        ) {
             $columna = $this->numeroColumna($indiceSoporte);
-            $errores[] = "CELDA {$columna}{$fila}: SOPORTE " . "\"{$valores[$indiceSoporte]}\" no existe.";
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: SOPORTE "
+                . "\"{$valores[$indiceSoporte]}\" no existe.";
         }
-        if (! $this->vacio($valores[$indiceFojas])) {
-            $fojas = preg_replace('/\s+/', '', mb_strtoupper((string) $valores[$indiceFojas], 'UTF-8'));
-            if ($fojas !== 'S/F' && ! preg_match('/^[0-9-]+$/', $fojas)) {
-                $columna = $this->numeroColumna($indiceFojas);
-                $errores[] = "CELDA {$columna}{$fila}: FOJAS solo puede " . "contener números, \"-\" o \"S/F\".";
-            }
+
+        if ($this->vacio($valores[$indiceObservaciones])) {
+            $columna = $this->numeroColumna($indiceObservaciones);
+
+            $errores[] =
+                "CELDA {$columna}{$fila}: OBSERVACIONES es obligatorio.";
         }
-        if (! $this->vacio($valores[$indiceFechas])) {
-            $fechas = preg_replace('/\s+/', '', (string) $valores[$indiceFechas]);
-            if (! preg_match('/^[0-9-]+$/', $fechas)) {
-                $columna = $this->numeroColumna($indiceFechas);
-                $errores[] = "CELDA {$columna}{$fila}: FECHAS EXTREMAS " . "solo puede contener números y \"-\".";
-            }
-        }
+
         return $errores;
     }
 

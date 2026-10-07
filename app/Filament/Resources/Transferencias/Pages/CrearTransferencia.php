@@ -243,15 +243,17 @@ class CrearTransferencia extends Page
             );
             $this->resultadoValidacion = $resultado;
             $this->archivoValidado = true;
-            if (! empty($resultado['errores_generales']) || $resultado['total_invalidos'] > 0) {
+            if (
+                ! empty($resultado['errores_generales'])
+                || $resultado['total_invalidos'] > 0
+            ) {
                 Storage::disk('local')->delete($archivo);
                 $this->data['archivo_excel'] = null;
                 $this->archivoValidado = false;
-                $erroresGenerales = $resultado['errores_generales'] ?? [];
                 Notification::make()
                     ->danger()
-                    ->title('Archivo con errores')
-                    ->body(implode("\n", $erroresGenerales))
+                    ->title('Archivo inválido')
+                    ->body('El archivo contiene errores. Revise el detalle mostrado en la sección de errores.')
                     ->persistent()
                     ->send();
                 return;

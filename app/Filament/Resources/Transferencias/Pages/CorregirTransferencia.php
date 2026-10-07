@@ -186,6 +186,12 @@ class CorregirTransferencia extends Page implements HasTable
                                         ?->observacion
                                         ?? 'SIN OBSERVACIONES'
                             )
+                            ->color('warning')
+                            ->extraAttributes([
+                                'class' =>
+                                    'rounded-lg bg-warning-50 p-4 ring-1 ring-warning-200 '
+                                    . 'dark:bg-warning-500/10 dark:ring-warning-500/30',
+                            ])
                             ->columnSpanFull(),
                     ])
                     ->columns(3),

@@ -6,6 +6,7 @@ use App\Filament\Resources\Transferencias\TransferenciaResource;
 use App\Models\Transferencia;
 use App\Models\User;
 use App\Models\TransferenciaHistorial;
+use App\Models\InventarioExpediente;
 use App\Services\TransferenciaService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -688,20 +689,29 @@ class TransferenciasTable
     private static function imprimirEtiquetasAction(?User $user): Action
     {
         return Action::make('imprimirEtiquetas')
-            ->label('Imprimir etiquetas')
+            ->label('Imprimir Etiquetas')
             ->icon('heroicon-o-qr-code')
             ->color('gray')
             ->visible(
-                fn (Transferencia $record): bool =>
-                    $user instanceof User
-                    && $record->estado?->valor === 'APROBADO'
-                    && (
-                        $user->esEncargadoArchivo()
-                        || (
-                            $user->esTransferencias()
-                            && $record->usuario_solicitante_id === $user->id
-                        )
-                    )
+                function (Transferencia $record) use ($user): bool {
+                    if (
+                        ! $user instanceof User
+                        || ! $user->esEncargadoArchivo()
+                        || $record->estado?->valor !== 'INVENTARIADO'
+                    ) {
+                        return false;
+                    }
+                    $expedienteIds = $record->expedientes()
+                        ->where('activo', true)
+                        ->pluck('id');
+                    return $expedienteIds->isNotEmpty()
+                        && InventarioExpediente::query()
+                            ->whereIn(
+                                'transferencia_expediente_id',
+                                $expedienteIds
+                            )
+                            ->count() === $expedienteIds->count();
+                }
             )
             ->url(
                 fn (Transferencia $record): string =>
@@ -716,7 +726,7 @@ class TransferenciasTable
     private static function imprimirSolicitudAction(?User $user): Action
     {
         return Action::make('imprimirSolicitud')
-            ->label('Imprimir solicitud de transferencia')
+            ->label('Imprimir Formulario Transferencia')
             ->icon('heroicon-o-document-arrow-down')
             ->color('gray')
             ->visible(
@@ -744,7 +754,7 @@ class TransferenciasTable
     private static function imprimirFormularioComplementarioAction(?User $user): Action
     {
         return Action::make('imprimirFormularioComplementario')
-            ->label('Imprimir formulario complementario')
+            ->label('Imprimir Formulario Complementario')
             ->icon('heroicon-o-document-arrow-down')
             ->color('gray')
             ->visible(
@@ -797,7 +807,7 @@ class TransferenciasTable
     private static function migrarInventarioAction(?User $user): Action
     {
         return Action::make('migrarInventario')
-            ->label('Migrar expedientes al inventario general')
+            ->label('Incorporar al Inventario General')
             ->icon('heroicon-o-arrow-up-tray')
             ->color('success')
             ->visible(
@@ -842,7 +852,7 @@ class TransferenciasTable
                     $record->correlativo
             )
             ->modalDescription('Al confirmar, los expedientes serán registrados en el inventario general.')
-            ->modalSubmitActionLabel('Migrar al inventario')
+            ->modalSubmitActionLabel('Incorporar al inventario')
             ->modalCancelActionLabel('Cancelar')
             ->action(function (
                 Transferencia $record,
@@ -861,7 +871,7 @@ class TransferenciasTable
                 } catch (\Throwable $e) {
                     Notification::make()
                         ->danger()
-                        ->title('No se pudo migrar la transferencia')
+                        ->title('No se pudo incorporar la transferencia al inventario general.')
                         ->body($e->getMessage())
                         ->persistent()
                         ->send();

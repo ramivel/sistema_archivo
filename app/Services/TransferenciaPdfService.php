@@ -17,6 +17,8 @@ class TransferenciaPdf extends Fpdf
     public const FUENTE_TEXTO = 'Times';
     private ?string $bannerPath = null;
     private ?string $footerPath = null;
+    private bool $mostrarEncabezado = true;
+    private bool $mostrarPie = true;
 
     public function setBannerPath(?string $path): void
     {
@@ -28,8 +30,21 @@ class TransferenciaPdf extends Fpdf
         $this->footerPath = $path;
     }
 
+    public function setMostrarEncabezado(bool $mostrar): void
+    {
+        $this->mostrarEncabezado = $mostrar;
+    }
+
+    public function setMostrarPie(bool $mostrar): void
+    {
+        $this->mostrarPie = $mostrar;
+    }
+
     public function Header(): void
     {
+        if (! $this->mostrarEncabezado) {
+            return;
+        }
         if ($this->bannerPath && is_file($this->bannerPath))
             $this->Image($this->bannerPath, 10, 8, 196, 0, 'PNG');
         $this->SetY(40);
@@ -37,6 +52,9 @@ class TransferenciaPdf extends Fpdf
 
     public function Footer(): void
     {
+        if (! $this->mostrarPie) {
+            return;
+        }
         $ancho = 196;
         $altoFooter = $this->alturaFooter($ancho);
         if ($altoFooter > 0)
@@ -234,12 +252,16 @@ class TransferenciaPdfService
     private const ETIQUETA_ALTO = 42;
     private const ETIQUETA_SEPARACION = 4;
     private const ETIQUETA_ANCHO_TOTAL = 196;
-    private const ETIQUETA_ANCHO_LOGO = 45;
-    private const ETIQUETA_ANCHO_QR = 40;
-    private const ETIQUETA_ANCHO_DESCRIPCION = 90;
-    private const ETIQUETA_ANCHO_CODIGO = 21;
-    private const ETIQUETA_TAMANO_QR = 40;
-    private const ETIQUETA_TAMANO_LOGO = 40;
+    private const ETIQUETA_ANCHO_LOGO = 35;
+    private const ETIQUETA_ANCHO_QR = 35;
+    private const ETIQUETA_ANCHO_DESCRIPCION = 75;
+    private const ETIQUETA_ANCHO_CODIGO = 9;
+    private const ETIQUETA_ANCHO_CODIGO_INVENTARIO = 42;
+    private const ETIQUETA_TAMANO_QR = 32;
+    private const ETIQUETA_TAMANO_LOGO = 31;
+    private const ETIQUETA_TAMANO_FUENTE = 10;
+    private const ETIQUETA_MAX_CARACTERES_DESCRIPCION = 180;
+    private const ETIQUETA_TAMANO_CODIGO_INVENTARIO = 14;
 
     public function descargarEtiquetas(Transferencia $transferencia)
     {
@@ -248,20 +270,47 @@ class TransferenciaPdfService
             'subfondo',
             'seccion',
             'usuarioSolicitante',
-            'expedientes',
+            'expedientes.correccionArchivo',
+            'expedientes.inventario',
         ]);
+
         $pdf = new TransferenciaPdf('P', 'mm', 'Letter');
+        $pdf->setMostrarEncabezado(false);
+        $pdf->setMostrarPie(false);
         $pdf->SetMargins(self::MARGEN, self::MARGEN, self::MARGEN);
         $pdf->SetAutoPageBreak(true, self::MARGEN);
+
         $logo = resource_path('images/logo.png');
-        foreach ($transferencia->expedientes->where('activo', true)->sortBy('id')->values() as $indice => $expediente) {
+
+        foreach (
+            $transferencia->expedientes
+                ->where('activo', true)
+                ->sortBy('id')
+                ->take(100)
+                ->values() as $indice => $expediente
+        ) {
             if ($indice % self::ETIQUETAS_FILAS_POR_PAGINA === 0) {
                 $pdf->AddPage();
-                $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, 'B', 12);
-                $pdf->Cell(0, 8, $pdf->encode($transferencia->correlativo), 0, 1, 'C');
+                $pdf->SetFont(
+                    TransferenciaPdf::FUENTE_TEXTO,
+                    'B',
+                    12
+                );
+                $pdf->Cell(
+                    0,
+                    8,
+                    $pdf->encode($transferencia->correlativo),
+                    0,
+                    1,
+                    'C'
+                );
                 $pdf->Ln(3);
                 $y = $pdf->GetY();
             }
+
+            $origen = $expediente->correccionArchivo ?? $expediente;
+            $codigoInventario = $expediente->inventario
+                ?->codigo_inventario ?? '-';
 
             $x = self::MARGEN;
             $alto = self::ETIQUETA_ALTO;
@@ -270,14 +319,51 @@ class TransferenciaPdfService
             $xLogo = $x;
             $xQr = $xLogo + self::ETIQUETA_ANCHO_LOGO;
             $xDescripcion = $xQr + self::ETIQUETA_ANCHO_QR;
-            $xCodigo = $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION;
 
-            $qrPath = $this->crearArchivoQr($this->textoQrEtiqueta($transferencia, $expediente));
+            $xCodigoInventario = $xDescripcion
+                + self::ETIQUETA_ANCHO_DESCRIPCION;
+
+            $xCodigo = $xCodigoInventario
+                + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO;
+
+            $qrPath = $this->crearArchivoQr(
+                $this->textoQrEtiqueta(
+                    $transferencia,
+                    $expediente
+                )
+            );
 
             $pdf->Rect($x, $y, $ancho, $alto);
-            $pdf->Line($xLogo + self::ETIQUETA_ANCHO_LOGO,$y,$xLogo + self::ETIQUETA_ANCHO_LOGO,$y + $alto);
-            $pdf->Line($xQr + self::ETIQUETA_ANCHO_QR,$y,$xQr + self::ETIQUETA_ANCHO_QR,$y + $alto);
-            $pdf->Line($xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,$y,$xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION, $y + $alto);
+
+            $pdf->Line(
+                $xLogo + self::ETIQUETA_ANCHO_LOGO,
+                $y,
+                $xLogo + self::ETIQUETA_ANCHO_LOGO,
+                $y + $alto
+            );
+
+            $pdf->Line(
+                $xQr + self::ETIQUETA_ANCHO_QR,
+                $y,
+                $xQr + self::ETIQUETA_ANCHO_QR,
+                $y + $alto
+            );
+
+            $pdf->Line(
+                $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,
+                $y,
+                $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,
+                $y + $alto
+            );
+
+            $pdf->Line(
+                $xCodigoInventario
+                    + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
+                $y,
+                $xCodigoInventario
+                    + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
+                $y + $alto
+            );
 
             $this->agregarLogoCentrado(
                 $pdf,
@@ -310,30 +396,49 @@ class TransferenciaPdfService
 
             $this->escribirTextoCentrado(
                 $pdf,
-                $expediente->descripcion_lomo ?? '-',
+                $this->limitarTextoEtiqueta(
+                    $origen->descripcion_lomo,
+                    self::ETIQUETA_MAX_CARACTERES_DESCRIPCION
+                ),
                 $xDescripcion,
                 $y,
                 self::ETIQUETA_ANCHO_DESCRIPCION,
                 $alto,
-                12,
-                6
+                self::ETIQUETA_TAMANO_FUENTE,
+                self::ETIQUETA_TAMANO_FUENTE
             );
 
             $this->escribirTextoCentrado(
                 $pdf,
-                $expediente->codigo_referencia ?? '-',
+                $codigoInventario,
+                $xCodigoInventario,
+                $y,
+                self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
+                $alto,
+                self::ETIQUETA_TAMANO_CODIGO_INVENTARIO,
+                self::ETIQUETA_TAMANO_CODIGO_INVENTARIO
+            );
+
+            $this->escribirTextoCentrado(
+                $pdf,
+                $origen->codigo_referencia ?? '-',
                 $xCodigo,
                 $y,
                 self::ETIQUETA_ANCHO_CODIGO,
                 $alto,
-                26,
-                12
+                self::ETIQUETA_TAMANO_FUENTE,
+                self::ETIQUETA_TAMANO_FUENTE
             );
 
             $this->eliminarArchivoTemporal($qrPath);
+
             $y += $alto + self::ETIQUETA_SEPARACION;
         }
-        $nombreArchivo = $this->sanitizarNombreArchivo('etiquetas_' . $transferencia->correlativo) . '.pdf';
+
+        $nombreArchivo = $this->sanitizarNombreArchivo(
+            'etiquetas_' . $transferencia->correlativo
+        ) . '.pdf';
+
         return $this->respuestaPdf($pdf, $nombreArchivo);
     }
 
@@ -398,6 +503,28 @@ class TransferenciaPdfService
             0,
             'PNG'
         );
+    }
+
+    private function limitarTextoEtiqueta(
+        ?string $texto,
+        int $maximo
+    ): string {
+        $texto = preg_replace(
+            '/\s+/u',
+            ' ',
+            trim((string) $texto)
+        ) ?: '-';
+
+        if (mb_strlen($texto, 'UTF-8') <= $maximo) {
+            return $texto;
+        }
+
+        $marcador = '[...]';
+        $longitud = $maximo - mb_strlen($marcador, 'UTF-8');
+
+        return rtrim(
+            mb_substr($texto, 0, $longitud, 'UTF-8')
+        ) . $marcador;
     }
 
     private const MARGEN_LEFT_RIGHT_SOLICITUD = 10;
@@ -910,8 +1037,16 @@ class TransferenciaPdfService
         );
     }
 
-    private function textoQrEtiqueta(Transferencia $transferencia, TransferenciaExpediente $expediente): string
-    {
+    private function textoQrEtiqueta(
+        Transferencia $transferencia,
+        TransferenciaExpediente $expediente
+    ): string {
+        $origen = $expediente->correccionArchivo ?? $expediente;
+        $descripcion = preg_replace(
+            '/[\r\n|]+/u',
+            ' ',
+            trim((string) ($origen->descripcion_lomo ?? '-'))
+        ) ?: '-';
         return implode('|', [
             $transferencia->correlativo,
             $transferencia->fondo?->valor ?? '-',
@@ -920,7 +1055,9 @@ class TransferenciaPdfService
             $this->usuarioRemitente($transferencia),
             $transferencia->fecha_solicitud?->format('d/m/Y') ?? '-',
             $transferencia->total_expedientes,
-            $expediente->codigo_referencia ?? '-',
+            $expediente->inventario?->codigo_inventario ?? '-',
+            $origen->codigo_referencia ?? '-',
+            $descripcion,
         ]);
     }
 
