@@ -122,10 +122,14 @@ class BuscadorInventarioTable
             filled($texto)
             && in_array($campo, $camposPermitidos, true)
         ) {
-            $query->where(
-                $campo,
-                'ILIKE',
-                "%{$texto}%"
+            $columna = $query
+                ->getQuery()
+                ->getGrammar()
+                ->wrap($campo);
+
+            $query->whereRaw(
+                "unaccent(UPPER({$columna})) ILIKE unaccent(?)",
+                ["%{$texto}%"]
             );
         }
 

@@ -11,6 +11,7 @@ return new class extends Migration
     {
         DB::statement('DROP SCHEMA IF EXISTS inventario CASCADE');
         DB::statement('CREATE SCHEMA inventario');
+        DB::statement('CREATE EXTENSION IF NOT EXISTS unaccent');
 
         Schema::create('inventario.inventario_expedientes', function (Blueprint $table): void {
             $table->bigIncrements('id');
@@ -62,21 +63,52 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->uuid('guid')->unique()->default(DB::raw('gen_random_uuid()'));
             $table->bigInteger('inventario_expediente_id');
-            $table->bigInteger('usuario_solicitante_id');
+            $table->bigInteger('usuario_solicitante_id')->nullable();
+            $table->string('numero_solicitud', 50);
+            $table->date('fecha_prestamo');
+            $table->string('nombre_solicitante', 200);
+            $table->string('cargo', 150);
+            $table->bigInteger('oficina_parametro_id');
+            $table->bigInteger('direccion_parametro_id');
+            $table->bigInteger('area_parametro_id')->nullable();
+            $table->string('telefono', 100);
+            $table->text('motivo_finalidad');
             $table->bigInteger('usuario_registro_id');
-            $table->timestamp('fecha_prestamo');
-            $table->timestamp('fecha_devolucion')->nullable();
-            $table->text('observaciones_prestamo');
+            $table->date('fecha_devolucion')->nullable();
             $table->text('observaciones_devolucion')->nullable();
             $table->timestamp('fecha_creacion');
             $table->timestamp('fecha_actualizacion')->nullable();
 
             $table->index(['inventario_expediente_id', 'fecha_devolucion',]);
+            $table->index('numero_solicitud');
 
             $table->foreign('inventario_expediente_id')->references('id')->on('inventario.inventario_expedientes');
             $table->foreign('usuario_solicitante_id')->references('id')->on('usuarios');
             $table->foreign('usuario_registro_id')->references('id')->on('usuarios');
+            $table->foreign('oficina_parametro_id')->references('id')->on('parametros');
+            $table->foreign('direccion_parametro_id')->references('id')->on('parametros');
+            $table->foreign('area_parametro_id')->references('id')->on('parametros');
+
         });
+
+        Schema::create(
+            'inventario.inventario_prestamo_tipo_consulta',
+            function (Blueprint $table): void {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('inventario_prestamo_id');
+                $table->unsignedBigInteger('tipo_consulta_parametro_id');
+                $table->timestamp('fecha_creacion');
+                $table->unique(['inventario_prestamo_id','tipo_consulta_parametro_id']);
+
+                $table->foreign('inventario_prestamo_id','fk_prestamo_tipo_consulta_prestamo')
+                    ->references('id')
+                    ->on('inventario.inventario_prestamos')
+                    ->cascadeOnDelete();
+                $table->foreign('tipo_consulta_parametro_id')
+                    ->references('id')
+                    ->on('parametros');
+            }
+        );
 
         Schema::create('inventario.inventario_historial',function (Blueprint $table): void {
                 $table->bigIncrements('id');
@@ -104,6 +136,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('inventario.inventario_historial');
+        Schema::dropIfExists('inventario.inventario_prestamo_tipo_consulta');
         Schema::dropIfExists('inventario.inventario_prestamos');
         Schema::dropIfExists('inventario.inventario_expedientes');
 
