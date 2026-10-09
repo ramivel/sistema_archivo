@@ -21,7 +21,7 @@ class FondoResource extends Resource
     protected static ?string $modelLabel = 'Fondo/Oficina';
     protected static ?string $pluralModelLabel = 'Fondos/Oficinas';
     protected static ?string $slug = 'fondos';
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office-2';
 
     public static function form(Schema $schema): Schema
     {
