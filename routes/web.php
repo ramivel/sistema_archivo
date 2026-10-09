@@ -4,6 +4,7 @@ use App\Services\PlantillaTransferenciaExcelService;
 use App\Services\TransferenciaService;
 use Illuminate\Support\Facades\Route;
 use App\Models\Transferencia;
+use App\Models\InventarioExpediente;
 use App\Services\TransferenciaPdfService;
 
 Route::get('/', function () {
@@ -78,3 +79,15 @@ Route::middleware('auth')->get(
         ]);
     }
 )->name('transferencias.documento');
+
+Route::middleware('auth')->get(
+    '/inventario/{expediente}/imprimir-etiqueta',
+    function (
+        InventarioExpediente $expediente,
+        TransferenciaPdfService $service
+    ) {
+        return $service->descargarEtiquetaInventario(
+            $expediente
+        );
+    }
+)->name('inventario.imprimir-etiqueta');

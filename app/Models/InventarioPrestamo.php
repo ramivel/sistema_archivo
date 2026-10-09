@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class InventarioPrestamo extends Model
 {
@@ -18,9 +19,16 @@ class InventarioPrestamo extends Model
         'inventario_expediente_id',
         'usuario_solicitante_id',
         'usuario_registro_id',
+        'numero_solicitud',
         'fecha_prestamo',
+        'nombre_solicitante',
+        'cargo',
+        'oficina_parametro_id',
+        'direccion_parametro_id',
+        'area_parametro_id',
+        'telefono',
+        'motivo_finalidad',
         'fecha_devolucion',
-        'observaciones_prestamo',
         'observaciones_devolucion',
         'fecha_creacion',
         'fecha_actualizacion',
@@ -29,8 +37,8 @@ class InventarioPrestamo extends Model
     protected function casts(): array
     {
         return [
-            'fecha_prestamo' => 'datetime',
-            'fecha_devolucion' => 'datetime',
+            'fecha_prestamo' => 'date',
+            'fecha_devolucion' => 'date',
             'fecha_creacion' => 'datetime',
             'fecha_actualizacion' => 'datetime',
         ];
@@ -63,5 +71,39 @@ class InventarioPrestamo extends Model
             User::class,
             'usuario_registro_id'
         );
+    }
+
+    public function oficina(): BelongsTo
+    {
+        return $this->belongsTo(
+            Parametro::class,
+            'oficina_parametro_id'
+        );
+    }
+
+    public function direccion(): BelongsTo
+    {
+        return $this->belongsTo(
+            Parametro::class,
+            'direccion_parametro_id'
+        );
+    }
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(
+            Parametro::class,
+            'area_parametro_id'
+        );
+    }
+
+    public function tiposConsulta(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Parametro::class,
+            'inventario.inventario_prestamo_tipo_consulta',
+            'inventario_prestamo_id',
+            'tipo_consulta_parametro_id'
+        )->withPivot('fecha_creacion');
     }
 }

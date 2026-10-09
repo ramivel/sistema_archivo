@@ -437,6 +437,33 @@ class ParametrosSeeder extends Seeder
                 'descripcion' => 'EL EXPEDIENTE FUE DADO DE BAJA DEL INVENTARIO DOCUMENTAL.',
                 'orden' => 3,
             ],
+            // =====================================================
+            // 11. PRESTAMO - TIPO CONSULTA
+            // =====================================================
+            [
+                'grupo' => 'TIPO_CONSULTA',
+                'valor' => 'CONSULTA EN ARCHIVO',
+                'descripcion' => 'CONSULTA REALIZADA DENTRO DE LAS INSTALACIONES DEL ARCHIVO.',
+                'orden' => 1,
+            ],
+            [
+                'grupo' => 'TIPO_CONSULTA',
+                'valor' => 'CONSULTA FUERA DEL ARCHIVO',
+                'descripcion' => 'CONSULTA REALIZADA FUERA DE LAS INSTALACIONES DEL ARCHIVO.',
+                'orden' => 2,
+            ],
+            [
+                'grupo' => 'TIPO_CONSULTA',
+                'valor' => 'FOTOCOPIAS',
+                'descripcion' => 'SOLICITUD DE REPRODUCCIÓN O FOTOCOPIA DE LA DOCUMENTACIÓN.',
+                'orden' => 3,
+            ],
+            [
+                'grupo' => 'TIPO_CONSULTA',
+                'valor' => 'LEGALIZACION',
+                'descripcion' => 'SOLICITUD DE LEGALIZACIÓN DE DOCUMENTACIÓN.',
+                'orden' => 4,
+            ],
 
         ];
 

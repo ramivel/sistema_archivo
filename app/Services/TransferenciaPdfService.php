@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Transferencia;
 use App\Models\TransferenciaExpediente;
+use App\Models\InventarioExpediente;
 use Fpdf\Fpdf;
 use Illuminate\Support\Str;
 use chillerlan\QRCode\Output\QROutputInterface;
@@ -286,7 +287,6 @@ class TransferenciaPdfService
             $transferencia->expedientes
                 ->where('activo', true)
                 ->sortBy('id')
-                ->take(100)
                 ->values() as $indice => $expediente
         ) {
             if ($indice % self::ETIQUETAS_FILAS_POR_PAGINA === 0) {
@@ -1140,4 +1140,124 @@ class TransferenciaPdfService
             ($usuario?->apellidos ?? '')
         ) ?: ($usuario?->usuario ?? '-');
     }
+
+    public function descargarEtiquetaInventario(InventarioExpediente $expediente) {
+        $expediente->loadMissing([
+            'oficina',
+            'direccion',
+            'area',
+            'serieDocumental',
+            'soporte',
+        ]);
+        $pdf = new TransferenciaPdf('P', 'mm', 'Letter');
+        $pdf->setMostrarEncabezado(false);
+        $pdf->setMostrarPie(false);
+        $pdf->SetMargins(self::MARGEN, self::MARGEN, self::MARGEN);
+        $pdf->SetAutoPageBreak(true, self::MARGEN);
+        $pdf->AddPage();
+
+        $logo = resource_path('images/logo.png');
+        $y = $pdf->GetY();
+        $x = self::MARGEN;
+        $alto = self::ETIQUETA_ALTO;
+        $ancho = self::ETIQUETA_ANCHO_TOTAL;
+
+        $xLogo = $x;
+        $xQr = $xLogo + self::ETIQUETA_ANCHO_LOGO;
+        $xDescripcion = $xQr + self::ETIQUETA_ANCHO_QR;
+
+        $xCodigoInventario = $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION;
+        $xCodigo = $xCodigoInventario + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO;
+        $qrPath = $this->crearArchivoQr($this->textoQrEtiquetaInventario($expediente));
+
+        $pdf->Rect($x, $y, $ancho, $alto);
+        $pdf->Line($xLogo + self::ETIQUETA_ANCHO_LOGO,$y,$xLogo + self::ETIQUETA_ANCHO_LOGO,$y + $alto);
+        $pdf->Line($xQr + self::ETIQUETA_ANCHO_QR,$y,$xQr + self::ETIQUETA_ANCHO_QR,$y + $alto);
+        $pdf->Line($xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,$y,$xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,$y + $alto);
+        $pdf->Line($xCodigoInventario+ self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,$y,$xCodigoInventario+ self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,$y + $alto);
+
+        $this->agregarLogoCentrado(
+            $pdf,
+            $logo,
+            $xLogo,
+            $y,
+            self::ETIQUETA_ANCHO_LOGO,
+            $alto,
+            self::ETIQUETA_TAMANO_LOGO
+        );
+
+        $pdf->Image(
+            $qrPath,
+            $xQr + (
+                (
+                    self::ETIQUETA_ANCHO_QR
+                    - self::ETIQUETA_TAMANO_QR
+                ) / 2
+            ),
+            $y + (
+                (
+                    $alto - self::ETIQUETA_TAMANO_QR
+                ) / 2
+            ),
+            self::ETIQUETA_TAMANO_QR,
+            self::ETIQUETA_TAMANO_QR,
+            'PNG'
+        );
+
+        $this->escribirTextoCentrado(
+            $pdf,
+            $this->limitarTextoEtiqueta(
+                $expediente->descripcion_lomo,
+                self::ETIQUETA_MAX_CARACTERES_DESCRIPCION
+            ),
+            $xDescripcion,
+            $y,
+            self::ETIQUETA_ANCHO_DESCRIPCION,
+            $alto,
+            self::ETIQUETA_TAMANO_FUENTE,
+            self::ETIQUETA_TAMANO_FUENTE
+        );
+
+        $this->escribirTextoCentrado(
+            $pdf,
+            $expediente->codigo_inventario,
+            $xCodigoInventario,
+            $y,
+            self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
+            $alto,
+            self::ETIQUETA_TAMANO_CODIGO_INVENTARIO,
+            self::ETIQUETA_TAMANO_CODIGO_INVENTARIO
+        );
+
+        $this->eliminarArchivoTemporal($qrPath);
+        return $this->respuestaPdf(
+            $pdf,
+            $this->sanitizarNombreArchivo(
+                'etiqueta_' . $expediente->codigo_inventario
+            ) . '.pdf'
+        );
+    }
+
+    private function textoQrEtiquetaInventario(
+        InventarioExpediente $expediente
+    ): string {
+        $descripcion = preg_replace(
+            '/[\r\n|]+/u',
+            ' ',
+            trim((string) (
+                $expediente->descripcion_lomo ?? '-'
+            ))
+        ) ?: '-';
+        return implode('|', [
+            $expediente->codigo_inventario,
+            $expediente->oficina?->valor ?? '-',
+            $expediente->direccion?->valor ?? '-',
+            $expediente->area?->valor ?? '-',
+            $expediente->codigo_referencia ?? '-',
+            $expediente->procedencia ?? '-',
+            $expediente->serieDocumental?->valor ?? '-',
+            $descripcion,
+        ]);
+    }
+
 }

@@ -3,9 +3,8 @@
 namespace App\Filament\Resources\Inventarios;
 
 use App\Filament\Resources\Inventarios\Pages\BuscadorInventario;
-use App\Filament\Resources\Inventarios\Pages\CreateInventario;
-use App\Filament\Resources\Inventarios\Pages\EditInventario;
 use App\Filament\Resources\Inventarios\Pages\ListInventarios;
+use App\Filament\Resources\Inventarios\Pages\VerInventario;
 use App\Filament\Resources\Inventarios\Schemas\InventarioForm;
 use App\Filament\Resources\Inventarios\Tables\InventariosTable;
 use App\Models\InventarioExpediente;
@@ -36,7 +35,7 @@ class InventarioResource extends Resource
         $rutaBase = static::getRouteBaseName();
 
         return [
-            /*NavigationItem::make('Inventario general')
+            NavigationItem::make('Inventario general')
                 ->key(static::class . '.index')
                 ->group(static::getNavigationGroup())
                 ->icon('heroicon-o-archive-box')
@@ -47,7 +46,7 @@ class InventarioResource extends Resource
                 ->url(
                     fn (): string =>
                         static::getUrl('index')
-                ),*/
+                ),
 
             NavigationItem::make('Buscador documental')
                 ->key(static::class . '.buscador')
@@ -88,9 +87,8 @@ class InventarioResource extends Resource
     {
         return [
             'index' => ListInventarios::route('/'),
-            'create' => CreateInventario::route('/create'),
-            'edit' => EditInventario::route('/{record}/edit'),
             'buscador' => BuscadorInventario::route('/buscador'),
+            'ver' => VerInventario::route('/{record}/ver'),
         ];
     }
 }
