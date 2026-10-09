@@ -325,29 +325,23 @@ class TransferenciaExcelService
             }
         }
 
-        if ($this->vacio($valores[$indiceFechas])) {
-            $columna = $this->numeroColumna($indiceFechas);
+        $columna = $this->numeroColumna($indiceFechas);
+        $fechas = preg_replace('/\s+/', '',trim((string) $valores[$indiceFechas]));
+        if (mb_strlen($fechas) > 30) {
+            $errores[] = "CELDA {$columna}{$fila}: FECHAS EXTREMAS no puede superar los 30 caracteres.";
+        } elseif ($esRegularizacion && in_array($fechas, ['', '-'], true)) {
+            // En regularizaciones se permite vacío o "-".
+        } elseif (
+            ! preg_match(
+                '/^[0-9]{4}(?:-[0-9]{4})?$/',
+                $fechas
+            )
+        ) {
+            $mensaje = $esRegularizacion
+                ? 'FECHAS EXTREMAS debe estar vacío, contener "-" o tener el formato AAAA o AAAA-AAAA.'
+                : 'FECHAS EXTREMAS es obligatorio y debe tener el formato AAAA o AAAA-AAAA.';
 
-            $errores[] =
-                "CELDA {$columna}{$fila}: FECHAS EXTREMAS es obligatorio.";
-        } else {
-            $fechas = preg_replace(
-                '/\s+/',
-                '',
-                trim((string) $valores[$indiceFechas])
-            );
-
-            if (mb_strlen($fechas) > 30) {
-                $columna = $this->numeroColumna($indiceFechas);
-
-                $errores[] =
-                    "CELDA {$columna}{$fila}: FECHAS EXTREMAS no puede superar los 30 caracteres.";
-            } elseif (! preg_match('/^[0-9-]+$/', $fechas)) {
-                $columna = $this->numeroColumna($indiceFechas);
-
-                $errores[] =
-                    "CELDA {$columna}{$fila}: FECHAS EXTREMAS debe contener un año o un rango de años.";
-            }
+            $errores[] = "CELDA {$columna}{$fila}: {$mensaje}";
         }
 
         if ($this->vacio($valores[$indiceSoporte])) {

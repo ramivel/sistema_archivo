@@ -751,7 +751,7 @@ class TransferenciaService
                     'detalle' => $origen->detalle,
                     'tomo_volumen' => $origen->tomo_volumen,
                     'fojas' => $origen->fojas,
-                    'fechas_extremas' => $origen->fechas_extremas,
+                    'fechas_extremas' => filled($origen->fechas_extremas) ? $origen->fechas_extremas : '-',
                     'soporte_parametro_id' => $origen->soporte_parametro_id,
                     'observaciones' => $origen->observaciones,
                     'estado_parametro_id' => $estadoDisponible->getKey(),
