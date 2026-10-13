@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Transferencia;
 use App\Models\TransferenciaExpediente;
 use App\Models\InventarioExpediente;
+use App\Models\Parametro;
 use Fpdf\Fpdf;
 use Illuminate\Support\Str;
 use chillerlan\QRCode\Output\QROutputInterface;
@@ -46,8 +47,11 @@ class TransferenciaPdf extends Fpdf
         if (! $this->mostrarEncabezado) {
             return;
         }
-        if ($this->bannerPath && is_file($this->bannerPath))
-            $this->Image($this->bannerPath, 10, 8, 196, 0, 'PNG');
+        if ($this->bannerPath && is_file($this->bannerPath)) {
+            $ancho = 196;
+            $x = ($this->GetPageWidth() - $ancho) / 2;
+            $this->Image($this->bannerPath, $x, 8, $ancho, 0, 'PNG');
+        }
         $this->SetY(40);
     }
 
@@ -58,11 +62,12 @@ class TransferenciaPdf extends Fpdf
         }
         $ancho = 196;
         $altoFooter = $this->alturaFooter($ancho);
-        if ($altoFooter > 0)
-            $this->Image($this->footerPath,10,$this->GetPageHeight() - $altoFooter - 6,$ancho,0,'PNG');
+        $x = ($this->GetPageWidth() - $ancho) / 2;
+        if ($altoFooter > 0 && $this->footerPath && is_file($this->footerPath))
+            $this->Image($this->footerPath,$x,$this->GetPageHeight() - $altoFooter - 6,$ancho,0,'PNG');
         $this->SetY($this->GetPageHeight() - $altoFooter - 12);
         $this->SetFont(self::FUENTE_TEXTO, '', 9);
-        $this->Cell(0,5,$this->PageNo() . ' - {nb}',0,0,'C');
+        $this->Cell(0, 5, $this->PageNo() . ' - {nb}', 0, 0, 'C');
     }
 
     public function alturaFooter(float $ancho = 196): float
@@ -255,9 +260,9 @@ class TransferenciaPdfService
     private const ETIQUETA_ANCHO_TOTAL = 196;
     private const ETIQUETA_ANCHO_LOGO = 35;
     private const ETIQUETA_ANCHO_QR = 35;
-    private const ETIQUETA_ANCHO_DESCRIPCION = 75;
+    private const ETIQUETA_ANCHO_DESCRIPCION = 72;
     private const ETIQUETA_ANCHO_CODIGO = 9;
-    private const ETIQUETA_ANCHO_CODIGO_INVENTARIO = 42;
+    private const ETIQUETA_ANCHO_CODIGO_INVENTARIO = 45;
     private const ETIQUETA_TAMANO_QR = 32;
     private const ETIQUETA_TAMANO_LOGO = 31;
     private const ETIQUETA_TAMANO_FUENTE = 10;
@@ -274,15 +279,12 @@ class TransferenciaPdfService
             'expedientes.correccionArchivo',
             'expedientes.inventario',
         ]);
-
         $pdf = new TransferenciaPdf('P', 'mm', 'Letter');
         $pdf->setMostrarEncabezado(false);
         $pdf->setMostrarPie(false);
         $pdf->SetMargins(self::MARGEN, self::MARGEN, self::MARGEN);
         $pdf->SetAutoPageBreak(true, self::MARGEN);
-
         $logo = resource_path('images/logo.png');
-
         foreach (
             $transferencia->expedientes
                 ->where('activo', true)
@@ -291,79 +293,30 @@ class TransferenciaPdfService
         ) {
             if ($indice % self::ETIQUETAS_FILAS_POR_PAGINA === 0) {
                 $pdf->AddPage();
-                $pdf->SetFont(
-                    TransferenciaPdf::FUENTE_TEXTO,
-                    'B',
-                    12
-                );
-                $pdf->Cell(
-                    0,
-                    8,
-                    $pdf->encode($transferencia->correlativo),
-                    0,
-                    1,
-                    'C'
-                );
+                $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO,'B',12);
+                $pdf->Cell(0,8,$pdf->encode($transferencia->correlativo),0,1,'C');
                 $pdf->Ln(3);
                 $y = $pdf->GetY();
             }
 
             $origen = $expediente->correccionArchivo ?? $expediente;
-            $codigoInventario = $expediente->inventario
-                ?->codigo_inventario ?? '-';
 
             $x = self::MARGEN;
             $alto = self::ETIQUETA_ALTO;
             $ancho = self::ETIQUETA_ANCHO_TOTAL;
-
             $xLogo = $x;
             $xQr = $xLogo + self::ETIQUETA_ANCHO_LOGO;
             $xDescripcion = $xQr + self::ETIQUETA_ANCHO_QR;
+            $xCodigoInventario = $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION;
+            $xCodigo = $xCodigoInventario + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO;
 
-            $xCodigoInventario = $xDescripcion
-                + self::ETIQUETA_ANCHO_DESCRIPCION;
-
-            $xCodigo = $xCodigoInventario
-                + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO;
-
-            $qrPath = $this->crearArchivoQr(
-                $this->textoQrEtiqueta(
-                    $transferencia,
-                    $expediente
-                )
-            );
+            $qrPath = $this->crearArchivoQr($this->textoQrEtiqueta($transferencia, $expediente));
 
             $pdf->Rect($x, $y, $ancho, $alto);
-
-            $pdf->Line(
-                $xLogo + self::ETIQUETA_ANCHO_LOGO,
-                $y,
-                $xLogo + self::ETIQUETA_ANCHO_LOGO,
-                $y + $alto
-            );
-
-            $pdf->Line(
-                $xQr + self::ETIQUETA_ANCHO_QR,
-                $y,
-                $xQr + self::ETIQUETA_ANCHO_QR,
-                $y + $alto
-            );
-
-            $pdf->Line(
-                $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,
-                $y,
-                $xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,
-                $y + $alto
-            );
-
-            $pdf->Line(
-                $xCodigoInventario
-                    + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
-                $y,
-                $xCodigoInventario
-                    + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
-                $y + $alto
-            );
+            $pdf->Line($xLogo + self::ETIQUETA_ANCHO_LOGO,$y,$xLogo + self::ETIQUETA_ANCHO_LOGO,$y + $alto);
+            $pdf->Line($xQr + self::ETIQUETA_ANCHO_QR,$y,$xQr + self::ETIQUETA_ANCHO_QR,$y + $alto);
+            $pdf->Line($xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,$y,$xDescripcion + self::ETIQUETA_ANCHO_DESCRIPCION,$y + $alto);
+            $pdf->Line($xCodigoInventario + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,$y,$xCodigoInventario + self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,$y + $alto);
 
             $this->agregarLogoCentrado(
                 $pdf,
@@ -407,10 +360,9 @@ class TransferenciaPdfService
                 self::ETIQUETA_TAMANO_FUENTE,
                 self::ETIQUETA_TAMANO_FUENTE
             );
-
             $this->escribirTextoCentrado(
                 $pdf,
-                $codigoInventario,
+                $expediente->inventario?->codigo_inventario ?? '-',
                 $xCodigoInventario,
                 $y,
                 self::ETIQUETA_ANCHO_CODIGO_INVENTARIO,
@@ -418,7 +370,6 @@ class TransferenciaPdfService
                 self::ETIQUETA_TAMANO_CODIGO_INVENTARIO,
                 self::ETIQUETA_TAMANO_CODIGO_INVENTARIO
             );
-
             $this->escribirTextoCentrado(
                 $pdf,
                 $origen->codigo_referencia ?? '-',
@@ -429,16 +380,10 @@ class TransferenciaPdfService
                 self::ETIQUETA_TAMANO_FUENTE,
                 self::ETIQUETA_TAMANO_FUENTE
             );
-
             $this->eliminarArchivoTemporal($qrPath);
-
             $y += $alto + self::ETIQUETA_SEPARACION;
         }
-
-        $nombreArchivo = $this->sanitizarNombreArchivo(
-            'etiquetas_' . $transferencia->correlativo
-        ) . '.pdf';
-
+        $nombreArchivo = $this->sanitizarNombreArchivo('etiquetas_' . $transferencia->correlativo) . '.pdf';
         return $this->respuestaPdf($pdf, $nombreArchivo);
     }
 
@@ -514,14 +459,11 @@ class TransferenciaPdfService
             ' ',
             trim((string) $texto)
         ) ?: '-';
-
         if (mb_strlen($texto, 'UTF-8') <= $maximo) {
             return $texto;
         }
-
         $marcador = '[...]';
         $longitud = $maximo - mb_strlen($marcador, 'UTF-8');
-
         return rtrim(
             mb_substr($texto, 0, $longitud, 'UTF-8')
         ) . $marcador;
@@ -784,7 +726,7 @@ class TransferenciaPdfService
         $agregarEncabezado();
         $huboTextoRecortado = false;
         foreach ($transferencia->expedientes->where('activo', true)->sortBy('id')->values() as $indice => $expediente) {
-            $detallePdf = $this->prepararDetallePdf($pdf, $expediente->detalle, $anchos[5]);
+            $detallePdf = $this->prepararDetallePdf($pdf, $expediente->detalle, $anchos[5],self::MAX_CARACTERES_DETALLE,self::MAX_LINEAS_DETALLE);
             if ($detallePdf['recortado'])
                 $huboTextoRecortado = true;
             $datosFila = [
@@ -849,15 +791,29 @@ class TransferenciaPdfService
         foreach ($expedientes as $expediente) {
             $correccion = $expediente->correccionArchivo;
 
+            $descripcionPdf = $this->prepararDetallePdf(
+                $pdf,
+                $correccion->descripcion_lomo,
+                $anchos[4],
+                self::MAX_CARACTERES_DETALLE,
+                self::MAX_LINEAS_DETALLE
+            );
             $detallePdf = $this->prepararDetallePdf(
                 $pdf,
                 $correccion->detalle,
-                $anchos[5]
+                $anchos[5],
+                self::MAX_CARACTERES_DETALLE,
+                self::MAX_LINEAS_DETALLE
             );
-
-            if ($detallePdf['recortado']) {
+            $observacionesPdf = $this->prepararDetallePdf(
+                $pdf,
+                $correccion->observaciones,
+                $anchos[10],
+                self::MAX_CARACTERES_DETALLE,
+                self::MAX_LINEAS_DETALLE
+            );
+            if ($descripcionPdf['recortado'] || $detallePdf['recortado'] || $observacionesPdf['recortado'])
                 $huboTextoRecortado = true;
-            }
 
             $datosFila = [
                 $correccion->codigo_referencia ?? '-',
@@ -865,12 +821,13 @@ class TransferenciaPdfService
                 $correccion->procedencia ?? '-',
                 $correccion->serieDocumental?->valor ?? '-',
                 $correccion->descripcion_lomo ?? '-',
+                $descripcionPdf['texto'],
                 $detallePdf['texto'],
                 $correccion->tomo_volumen ?? '-',
                 $correccion->fojas ?? '-',
                 $correccion->fechas_extremas ?? '-',
                 $correccion->soporte?->valor ?? '-',
-                $correccion->observaciones ?? '-',
+                $observacionesPdf['texto'],
             ];
 
             $altoFila = $pdf->rowHeight(
@@ -1077,25 +1034,38 @@ class TransferenciaPdfService
     private function prepararDetallePdf(
         TransferenciaPdf $pdf,
         ?string $detalle,
-        float $ancho
+        float $ancho,
+        int $maximoCaracteres,
+        int $maximoLineas
     ): array {
         $textoOriginal = $pdf->normalizeCell($detalle);
         $texto = $textoOriginal;
         $marcador = self::MARCADOR_RECORTE;
         $recortado = false;
         $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, '', self::TAMANIO_FUENTE_TABLA);
-        $maximo = self::MAX_CARACTERES_DETALLE;
-        if (mb_strlen($texto, 'UTF-8') > $maximo) {
-            $texto = mb_substr($texto, 0, $maximo - mb_strlen($marcador, 'UTF-8'),'UTF-8');
+        if (mb_strlen($texto, 'UTF-8') > $maximoCaracteres) {
+            $texto = mb_substr(
+                $texto,
+                0,
+                $maximoCaracteres - mb_strlen($marcador, 'UTF-8'),
+                'UTF-8'
+            );
             $texto = rtrim($texto) . $marcador;
             $recortado = true;
         }
-        while ($pdf->lineCount($ancho, $texto) > self::MAX_LINEAS_DETALLE) {
+        while ($pdf->lineCount($ancho, $texto) > $maximoLineas) {
             $recortado = true;
             $longitud = mb_strlen($texto, 'UTF-8');
             $longitudNueva = max(1, $longitud - 50);
-            $texto = mb_substr($texto, 0, $longitudNueva, 'UTF-8');
-            $texto = rtrim(preg_replace('/\s+\S*$/u','',$texto) ?: $texto);
+            $texto = mb_substr(
+                $texto,
+                0,
+                $longitudNueva,
+                'UTF-8'
+            );
+            $texto = rtrim(
+                preg_replace('/\s+\S*$/u', '', $texto) ?: $texto
+            );
             $texto .= $marcador;
         }
         return [
@@ -1258,6 +1228,211 @@ class TransferenciaPdfService
             $expediente->serieDocumental?->valor ?? '-',
             $descripcion,
         ]);
+    }
+
+    private const REPORTE_ANCHOS_COLUMNAS = [
+        14,
+        16,
+        10,
+        9,
+        18,
+        22,
+        45,
+        48,
+        9,
+        9,
+        14,
+        14,
+        40,
+    ];
+
+    private const REPORTE_CABECERAS = [
+        'ESTADO',
+        "COD\nINVENTARIO",
+        "COD\nREF",
+        'CAJA',
+        'PROCEDENCIA',
+        "SERIE\nDOCUMENTAL",
+        "DESCRIPCIÓN\nDOCUMENTAL",
+        'DETALLE',
+        'TOMO',
+        'FOJAS',
+        "FECHAS\nEXTREMAS",
+        'SOPORTE',
+        'OBSERVACIONES',
+    ];
+
+    private const REPORTE_ALINEACION = [
+        'C',
+        'C',
+        'C',
+        'C',
+        'L',
+        'C',
+        'L',
+        'J',
+        'C',
+        'C',
+        'C',
+        'C',
+        'J',
+    ];
+
+    private const REPORTE_LINEA = 2.5;
+    private const REPORTE_FUENTE = 5;
+    private const REPORTE_MARGEN = 10;
+    private const MAX_CARACTERES_HORIZONTAL = 500;
+    private const MAX_LINEAS_HORIZONTAL = 8;
+
+    public function descargarReporteInventario(array $filtros)
+    {
+        $expedientes = InventarioExpediente::query()
+            ->with([
+                'oficina',
+                'direccion',
+                'area',
+                'serieDocumental',
+                'soporte',
+                'estado',
+            ])
+            ->when(
+                filled($filtros['oficina_parametro_id'] ?? null),
+                fn ($query) => $query->where(
+                    'oficina_parametro_id',
+                    $filtros['oficina_parametro_id']
+                )
+            )
+            ->when(
+                filled($filtros['direccion_parametro_id'] ?? null),
+                fn ($query) => $query->where(
+                    'direccion_parametro_id',
+                    $filtros['direccion_parametro_id']
+                )
+            )
+            ->when(
+                filled($filtros['area_parametro_id'] ?? null),
+                fn ($query) => $query->where(
+                    'area_parametro_id',
+                    $filtros['area_parametro_id']
+                )
+            )
+            ->orderBy('id')
+            ->get();
+
+        // Se conserva la orientación horizontal y el diseño actual del reporte.
+        $pdf = new TransferenciaPdf('L', 'mm', 'Letter');
+        $pdf->AliasNbPages();
+        $pdf->setBannerPath(resource_path('images/banner.png'));
+        $pdf->setFooterPath(resource_path('images/footer.png'));
+        $pdf->SetMargins(self::REPORTE_MARGEN, 10, self::REPORTE_MARGEN);
+        $pdf->SetAutoPageBreak(true, $pdf->alturaFooter() + 20);
+        $pdf->AddPage();
+
+        $pdf->SetXY(10, self::MARGEN_TOP_SOLICITUD - 8);
+        $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, 'B', 13);
+        $pdf->Cell(0,8,$pdf->encode('REPORTE POR FONDO / SUBFONDO / SECCIÓN'),0,1,'C');
+        $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, '', 8);
+        $pdf->Cell(0,5,$pdf->encode($this->textoFiltrosReporte($filtros)),0,1,'C');
+        $pdf->Ln(2);
+
+        if ($expedientes->isEmpty()) {
+            $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO, '', 10);
+            $pdf->Cell(0,8,$pdf->encode('No se encontraron expedientes con los filtros seleccionados.'),1,1,'C');
+            return $this->respuestaPdf($pdf, 'reporte_inventario_sin_resultados.pdf');
+        }
+        $pdf->Ln(5);
+        $this->agregarTablaReporteInventario($pdf, $expedientes);
+        return $this->respuestaPdf($pdf, 'reporte_inventario.pdf');
+    }
+
+    private function agregarTablaReporteInventario(
+        TransferenciaPdf $pdf,
+        Collection $expedientes
+    ): void {
+        $anchos = self::REPORTE_ANCHOS_COLUMNAS;
+        $cabeceras = self::REPORTE_CABECERAS;
+        $agregarEncabezado = function () use (
+            $pdf,
+            $anchos,
+            $cabeceras
+        ): void {
+            $pdf->SetXY(self::MARGEN_LEFT_TABLE, $pdf->GetY() -5);
+            $pdf->headerRow($anchos, $cabeceras);
+        };
+        $agregarEncabezado();
+        $huboTextoRecortado = false;
+        foreach ($expedientes as $expediente) {
+            $descripcionPdf = $this->prepararDetallePdf(
+                $pdf,
+                $expediente->descripcion_lomo,
+                $anchos[6],
+                self::MAX_CARACTERES_HORIZONTAL,
+                self::MAX_LINEAS_HORIZONTAL
+            );
+            $detallePdf = $this->prepararDetallePdf(
+                $pdf,
+                $expediente->detalle,
+                $anchos[7],
+                self::MAX_CARACTERES_HORIZONTAL,
+                self::MAX_LINEAS_HORIZONTAL
+            );
+            $observacionesPdf = $this->prepararDetallePdf(
+                $pdf,
+                $expediente->observaciones,
+                $anchos[12],
+                self::MAX_CARACTERES_HORIZONTAL,
+                self::MAX_LINEAS_HORIZONTAL
+            );
+            if ($descripcionPdf['recortado'] || $detallePdf['recortado'] || $observacionesPdf['recortado'])
+                $huboTextoRecortado = true;
+            $datos = [
+                $expediente->estado?->valor ?? '-',
+                $expediente->codigo_inventario ?? '-',
+                $expediente->codigo_referencia ?? '-',
+                $expediente->numero_caja ?? '-',
+                $expediente->procedencia ?? '-',
+                $expediente->serieDocumental?->valor ?? '-',
+                $descripcionPdf['texto'],
+                $detallePdf['texto'],
+                $expediente->tomo_volumen ?? '-',
+                $expediente->fojas ?? '-',
+                $expediente->fechas_extremas ?? '-',
+                $expediente->soporte?->valor ?? '-',
+                $observacionesPdf['texto'],
+            ];
+            $altoFila = $pdf->rowHeight($anchos, $datos,self::REPORTE_LINEA,self::REPORTE_FUENTE);
+            if ($pdf->GetY() + $altoFila > $pdf->limiteContenidoInferior(20)) {
+                $pdf->AddPage();
+                $agregarEncabezado();
+            }
+            $pdf->SetX(self::MARGEN_LEFT_TABLE);
+            $pdf->row($anchos,$datos,self::REPORTE_LINEA,self::REPORTE_FUENTE,self::REPORTE_ALINEACION);
+        }
+        if ($huboTextoRecortado) {
+            $leyenda = ' [...] DEBIDO A QUE EL TEXTO ES DEMASIADO EXTENSO, '
+                . 'SE RECORTÓ. PARA VERIFICAR EL TEXTO COMPLETO, '
+                . 'CONSULTE LA DESCRIPCIÓN DEL EXPEDIENTE DIRECTAMENTE '
+                . 'EN EL SISTEMA.';
+            $altoLeyenda = 12;
+            if ($pdf->GetY() + $altoLeyenda > $pdf->limiteContenidoInferior(20))
+                $pdf->AddPage();
+            $pdf->SetX(self::MARGEN_LEFT_TABLE);
+            $pdf->SetFont(TransferenciaPdf::FUENTE_TEXTO,'I',self::REPORTE_FUENTE);
+            $pdf->MultiCell(array_sum($anchos),4,$pdf->encode($leyenda),0,'L');
+        }
+    }
+
+    private function textoFiltrosReporte(array $filtros): string
+    {
+        $oficina = Parametro::find($filtros['oficina_parametro_id'] ?? null);
+        $direccion = Parametro::find($filtros['direccion_parametro_id'] ?? null);
+        $area = Parametro::find($filtros['area_parametro_id'] ?? null);
+        return 'FONDO: '
+            . ($oficina?->valor ?? '-')
+            . ' | SUBFONDO: '
+            . ($direccion?->valor ?? '-')
+            . ' | SECCIÓN: '
+            . ($area?->valor ?? 'TODAS');
     }
 
 }

@@ -5,6 +5,7 @@ use App\Services\TransferenciaService;
 use Illuminate\Support\Facades\Route;
 use App\Models\Transferencia;
 use App\Models\InventarioExpediente;
+use Illuminate\Http\Request;
 use App\Services\TransferenciaPdfService;
 
 Route::get('/', function () {
@@ -91,3 +92,19 @@ Route::middleware('auth')->get(
         );
     }
 )->name('inventario.imprimir-etiqueta');
+
+Route::middleware('auth')->get(
+    '/reportes/inventario/pdf',
+    function (
+        Request $request,
+        TransferenciaPdfService $service
+    ) {
+        return $service->descargarReporteInventario(
+            $request->only([
+                'oficina_parametro_id',
+                'direccion_parametro_id',
+                'area_parametro_id',
+            ])
+        );
+    }
+)->name('reportes.inventario.pdf');
