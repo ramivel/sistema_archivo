@@ -21,6 +21,8 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Actions\Action;
+use App\Filament\Pages\CambiarContrasenaUsuario;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -42,8 +44,15 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             // Grupos de navegación
             ->navigationGroups(AdminNavigation::groups())
+            
             // Autenticación personalizada
             ->login(Login::class)
+            ->userMenuItems([
+                Action::make('cambiarContrasena')
+                    ->label('Cambiar contraseña')
+                    ->icon('heroicon-o-key')
+                    ->url(fn (): string => CambiarContrasenaUsuario::getUrl()),
+            ])
             // Dashboard
             ->pages([
                 Dashboard::class,
@@ -82,38 +91,5 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
                 CheckUserActive::class,
             ]);
-
-
-/*
-            ->login(Login::class)
-            ->colors([
-                'primary' => Color::Amber,
-            ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
-            ->pages([
-                Dashboard::class,
-            ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
-            ])
-            ->middleware([
-                EncryptCookies::class,
-                AddQueuedCookiesToResponse::class,
-                StartSession::class,
-                AuthenticateSession::class,
-                ShareErrorsFromSession::class,
-                PreventRequestForgery::class,
-                SubstituteBindings::class,
-                DisableBladeIconComponents::class,
-                DispatchServingFilamentEvent::class,
-            ])
-            ->authMiddleware([
-                Authenticate::class,
-                CheckUserActive::class,
-            ]);
-            */
     }
 }
