@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Perfils;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Perfils\Pages\ListPerfils;
 use App\Filament\Resources\Perfils\Schemas\PerfilForm;
 use App\Filament\Resources\Perfils\Tables\PerfilsTable;
@@ -16,7 +19,7 @@ class PerfilResource extends Resource
     protected static ?string $model = Parametro::class;
     protected static string $grupo = 'PERFIL';
     protected static ?string $recordTitleAttribute = 'valor';
-    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::ADMINISTRACION->value;
     protected static ?string $navigationLabel = 'Perfiles';
     protected static ?string $modelLabel = 'Perfil';
     protected static ?string $pluralModelLabel = 'Perfiles';
@@ -37,6 +40,18 @@ class PerfilResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('grupo', static::$grupo);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

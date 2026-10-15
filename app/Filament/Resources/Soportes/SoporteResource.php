@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Soportes;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Soportes\Pages\ListSoportes;
 use App\Filament\Resources\Soportes\Schemas\SoporteForm;
 use App\Filament\Resources\Soportes\Tables\SoportesTable;
@@ -16,7 +19,7 @@ class SoporteResource extends Resource
     protected static ?string $model = Parametro::class;
     protected static string $grupo = 'SOPORTE';
     protected static ?string $recordTitleAttribute = 'valor';
-    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::ADMINISTRACION->value;
     protected static ?string $navigationLabel = 'Soportes';
     protected static ?string $modelLabel = 'Soporte';
     protected static ?string $pluralModelLabel = 'Soportes';
@@ -37,6 +40,18 @@ class SoporteResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('grupo', static::$grupo);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

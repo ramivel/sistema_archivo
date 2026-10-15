@@ -2,23 +2,24 @@
 
 namespace App\Filament\Resources\Inventarios;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Inventarios\Pages\BuscadorInventario;
 use App\Filament\Resources\Inventarios\Pages\ListInventarios;
 use App\Filament\Resources\Inventarios\Pages\VerInventario;
 use App\Filament\Resources\Inventarios\Schemas\InventarioForm;
 use App\Filament\Resources\Inventarios\Tables\InventariosTable;
 use App\Models\InventarioExpediente;
-use App\Models\User;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use Filament\Navigation\NavigationItem;
 
 class InventarioResource extends Resource
 {
     protected static ?string $model = InventarioExpediente::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Inventario';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::INVENTARIO->value;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
     protected static ?string $recordTitleAttribute = 'codigo_inventario';
     protected static ?string $navigationLabel = 'Inventario general';
@@ -28,14 +29,14 @@ class InventarioResource extends Resource
 
     public static function getNavigationItems(): array
     {
-        if (! static::canAccess()) {
+        $usuario = User::find(Auth::id());
+        if ($usuario === null) {
             return [];
         }
-
+        $items = [];
         $rutaBase = static::getRouteBaseName();
-
-        return [
-            NavigationItem::make('Inventario general')
+        if ($usuario->esEncargadoArchivo()) {
+            $items[] = NavigationItem::make('Inventario general')
                 ->key(static::class . '.index')
                 ->group(static::getNavigationGroup())
                 ->icon('heroicon-o-archive-box')
@@ -46,9 +47,10 @@ class InventarioResource extends Resource
                 ->url(
                     fn (): string =>
                         static::getUrl('index')
-                ),
-
-            NavigationItem::make('Buscador documental')
+                );
+        }
+        if ($usuario->esEncargadoArchivo() || $usuario->esConsultas()) {
+            $items[] = NavigationItem::make('Buscador documental')
                 ->key(static::class . '.buscador')
                 ->group(static::getNavigationGroup())
                 ->icon('heroicon-o-magnifying-glass')
@@ -59,14 +61,15 @@ class InventarioResource extends Resource
                 ->url(
                     fn (): string =>
                         static::getUrl('buscador')
-                ),
-        ];
+                );
+        }
+        return $items;
     }
 
     public static function canAccess(): bool
     {
         $usuario = User::find(Auth::id());
-        return $usuario instanceof User
+        return $usuario !== null
             && (
                 $usuario->esEncargadoArchivo()
                 || $usuario->esConsultas()
@@ -81,6 +84,17 @@ class InventarioResource extends Resource
     public static function table(Table $table): Table
     {
         return InventariosTable::configure($table);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

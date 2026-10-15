@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Subfondos;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Subfondos\Pages\ListSubfondos;
 use App\Filament\Resources\Subfondos\Schemas\SubfondoForm;
 use App\Filament\Resources\Subfondos\Tables\SubfondosTable;
@@ -16,7 +19,7 @@ class SubfondoResource extends Resource
     protected static ?string $model = Parametro::class;
     protected static string $grupo = 'SUBFONDO';
     protected static ?string $recordTitleAttribute = 'valor';
-    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::ADMINISTRACION->value;
     protected static ?string $navigationLabel = 'Fondos/Sub Fondos/Secciones';
     protected static ?string $modelLabel = 'Sub Fondo/Dirección';
     protected static ?string $pluralModelLabel = 'Sub Fondos/Direcciones';
@@ -80,6 +83,17 @@ class SubfondoResource extends Resource
     public static function getGrupo(): string
     {
         return static::$grupo;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

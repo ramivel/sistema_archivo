@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Navigation\AdminNavigation;
 use App\Filament\Pages\Auth\Login;
 use App\Http\Middleware\CheckUserActive;
 use Filament\Http\Middleware\Authenticate;
@@ -30,6 +31,60 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->globalSearch(false)
+            // Identidad visual
+            ->favicon(asset('images/favico.ico'))
+            ->colors([
+                'primary' => Color::Teal,
+            ])
+            ->darkMode(false)
+            // Barra lateral
+            ->sidebarCollapsibleOnDesktop()
+            // Grupos de navegación
+            ->navigationGroups(AdminNavigation::groups())
+            // Autenticación personalizada
+            ->login(Login::class)
+            // Dashboard
+            ->pages([
+                Dashboard::class,
+            ])
+            // Recursos y páginas
+            ->discoverResources(
+                in: app_path('Filament/Resources'),
+                for: 'App\\Filament\\Resources'
+            )
+            ->discoverPages(
+                in: app_path('Filament/Pages'),
+                for: 'App\\Filament\\Pages'
+            )
+            // Widgets
+            ->discoverWidgets(
+                in: app_path('Filament/Widgets'),
+                for: 'App\\Filament\\Widgets'
+            )
+            ->widgets([
+                AccountWidget::class,
+                FilamentInfoWidget::class,
+            ])
+            // Middleware
+            ->middleware([
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                AuthenticateSession::class,
+                ShareErrorsFromSession::class,
+                PreventRequestForgery::class,
+                SubstituteBindings::class,
+                DisableBladeIconComponents::class,
+                DispatchServingFilamentEvent::class,
+            ])
+            ->authMiddleware([
+                Authenticate::class,
+                CheckUserActive::class,
+            ]);
+
+
+/*
             ->login(Login::class)
             ->colors([
                 'primary' => Color::Amber,
@@ -59,5 +114,6 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
                 CheckUserActive::class,
             ]);
+            */
     }
 }

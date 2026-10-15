@@ -147,6 +147,11 @@ class User extends Authenticatable implements HasName
         return $this->perfiles->contains('valor', $perfil);
     }
 
+    public function esAdministrador(): bool
+    {
+        return $this->tienePerfil('ADMINISTRADOR');
+    }
+
     public function esEncargadoArchivo(): bool
     {
         return $this->tienePerfil('ENCARGADO ARCHIVO');

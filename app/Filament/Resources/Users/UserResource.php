@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
-use App\Models\User;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -15,7 +17,7 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
     protected static ?string $recordTitleAttribute = 'nombres';
-    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::ADMINISTRACION->value;
     protected static ?string $navigationLabel = 'Usuarios';
     protected static ?string $modelLabel = 'Usuario';
     protected static ?string $pluralModelLabel = 'Usuarios';
@@ -42,6 +44,18 @@ class UserResource extends Resource
                 'area',
                 'perfiles',
             ]);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

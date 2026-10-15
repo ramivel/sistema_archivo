@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Seccions;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Seccions\Pages\ListSeccions;
 use App\Filament\Resources\Seccions\Schemas\SeccionForm;
 use App\Filament\Resources\Seccions\Tables\SeccionsTable;
@@ -16,7 +19,7 @@ class SeccionResource extends Resource
     protected static ?string $model = Parametro::class;
     protected static string $grupo = 'SECCION';
     protected static ?string $recordTitleAttribute = 'valor';
-    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::ADMINISTRACION->value;
     protected static ?string $navigationLabel = 'Fondos/Sub Fondos/Secciones';
     protected static ?string $modelLabel = 'Sección/Área';
     protected static ?string $pluralModelLabel = 'Secciones/Áreas';
@@ -75,6 +78,17 @@ class SeccionResource extends Resource
     public static function getGrupo(): string
     {
         return static::$grupo;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

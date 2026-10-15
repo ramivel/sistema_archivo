@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Fondos;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Fondos\Pages\ListFondos;
 use App\Filament\Resources\Fondos\Schemas\FondoForm;
 use App\Filament\Resources\Fondos\Tables\FondosTable;
@@ -16,12 +19,21 @@ class FondoResource extends Resource
     protected static ?string $model = Parametro::class;
     protected static string $grupo = 'FONDO';
     protected static ?string $recordTitleAttribute = 'valor';
-    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::ADMINISTRACION->value;
     protected static ?string $navigationLabel = 'Fondos/Sub Fondos/Secciones';
     protected static ?string $modelLabel = 'Fondo/Oficina';
     protected static ?string $pluralModelLabel = 'Fondos/Oficinas';
     protected static ?string $slug = 'fondos';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office-2';
+
+    public static function getNavigationItemActiveRoutePattern(): string|array
+    {
+        return [
+            'filament.admin.resources.fondos.*',
+            'filament.admin.resources.subfondos.*',
+            'filament.admin.resources.secciones.*',
+        ];
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -43,6 +55,18 @@ class FondoResource extends Resource
                     $query->where('grupo', 'SUBFONDO');
                 },
             ]);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esAdministrador();
     }
 
     public static function getPages(): array

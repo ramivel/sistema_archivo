@@ -2,6 +2,9 @@
 
 namespace App\Filament\Pages\Reportes;
 
+use App\Enums\NavigationGroupEnum;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Pages\Reportes\Tables\ReporteInventarioTable;
 use App\Filament\Resources\Inventarios\InventarioResource;
 use App\Models\Parametro;
@@ -22,7 +25,7 @@ class ReportePorFondoSubfondoSeccion extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-chart-bar';
-    protected static string|\UnitEnum|null $navigationGroup = 'Reportes';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::REPORTES->value;
     protected static ?string $navigationLabel = 'Por Fondo/Subfondo/Sección';
     protected static ?string $title = 'Reporte por Fondo/Subfondo/Sección';
     protected static ?string $slug = 'reportes/fondo-subfondo-seccion';
@@ -33,13 +36,24 @@ class ReportePorFondoSubfondoSeccion extends Page implements HasForms, HasTable
 
     public static function shouldRegisterNavigation(): bool
     {
-        return InventarioResource::canAccess();
+        return self::canAccess();
+    }
+
+    public static function canViewAny(): bool
+    {
+        return self::canAccess();
     }
 
     public function mount(): void
     {
-        abort_unless(InventarioResource::canAccess(), 403);
+        abort_unless(self::canAccess(), 403);
         $this->form->fill();
+    }
+
+    public static function canAccess(array $parameters = []): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && $usuario->esEncargadoArchivo();
     }
 
     public function form(Schema $schema): Schema

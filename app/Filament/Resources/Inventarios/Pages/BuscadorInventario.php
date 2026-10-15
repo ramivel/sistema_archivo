@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\Inventarios\Pages;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\Inventarios\InventarioResource;
 use App\Filament\Resources\Inventarios\Tables\BuscadorInventarioTable;
-use App\Models\InventarioExpediente;
 use App\Models\Parametro;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -23,15 +24,9 @@ class BuscadorInventario extends Page implements HasTable, HasForms
 {
     use InteractsWithTable;
     use InteractsWithForms;
-
-    protected static string $resource =
-        InventarioResource::class;
-
-    protected string $view =
-        'filament.resources.inventarios.pages.buscador-inventario';
-
+    protected static string $resource = InventarioResource::class;
+    protected string $view = 'filament.resources.inventarios.pages.buscador-inventario';
     public array $filtros = [];
-
     public bool $busquedaEjecutada = false;
 
     public function form(Schema $schema): Schema
@@ -58,18 +53,15 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 $set('direccion_parametro_id', null);
                                 $set('area_parametro_id', null);
                             }),
-
                         Select::make('direccion_parametro_id')
                             ->label('Dirección')
                             ->placeholder('TODAS')
                             ->live()
                             ->options(function (Get $get): array {
                                 $oficinaId = $get('oficina_parametro_id');
-
                                 if (blank($oficinaId)) {
                                     return [];
                                 }
-
                                 return Parametro::query()
                                     ->where('grupo', 'SUBFONDO')
                                     ->where('padre_id', $oficinaId)
@@ -82,18 +74,15 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                             ->afterStateUpdated(function (callable $set): void {
                                 $set('area_parametro_id', null);
                             }),
-
                         Select::make('area_parametro_id')
                             ->label('Área')
                             ->placeholder('TODAS')
                             ->live()
                             ->options(function (Get $get): array {
                                 $direccionId = $get('direccion_parametro_id');
-
                                 if (blank($direccionId)) {
                                     return [];
                                 }
-
                                 return Parametro::query()
                                     ->where('grupo', 'SECCION')
                                     ->where('padre_id', $direccionId)
@@ -103,9 +92,6 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                     ->pluck('valor', 'id')
                                     ->toArray();
                             }),
-
-
-
                         Select::make('serie_documental_parametro_id')
                             ->label('Serie documental')
                             ->placeholder('TODAS')
@@ -115,7 +101,6 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                         'SERIE_DOCUMENTAL'
                                     )
                             ),
-
                         Select::make('soporte_parametro_id')
                             ->label('Soporte')
                             ->placeholder('TODOS')
@@ -123,12 +108,10 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 fn (): array =>
                                     self::parametroOptions('SOPORTE')
                             ),
-
                         TextInput::make('texto')
                             ->label('Texto a buscar')
                             ->maxLength(255)
                             ->columnSpan(2),
-
                         Select::make('campo')
                             ->label('Campo de búsqueda')
                             ->placeholder('Seleccione un campo')
@@ -234,5 +217,15 @@ class BuscadorInventario extends Page implements HasTable, HasForms
             ->orderBy('valor')
             ->pluck('valor', 'id')
             ->toArray();
+    }
+
+    public static function canAccess(array $parameters = []): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null
+            && (
+                $usuario->esEncargadoArchivo()
+                || $usuario->esConsultas()
+            );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Transferencias;
 
+use App\Enums\NavigationGroupEnum;
 use App\Filament\Resources\Transferencias\Pages\CrearTransferencia;
 use App\Filament\Resources\Transferencias\Pages\ListTransferencias;
 use App\Filament\Resources\Transferencias\Pages\RegularizarInventario;
@@ -22,7 +23,7 @@ class TransferenciaResource extends Resource
 {
     protected static ?string $model = Transferencia::class;
     protected static ?string $recordTitleAttribute = 'correlativo';
-    protected static string|\UnitEnum|null $navigationGroup = 'Inventario';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroupEnum::INVENTARIO->value;
     protected static ?string $navigationLabel = 'Transferencias';
     protected static ?string $modelLabel = 'Transferencia';
     protected static ?string $pluralModelLabel = 'Transferencias';
@@ -86,6 +87,18 @@ class TransferenciaResource extends Resource
             ");
         }
         return $query->orderByDesc('fecha_solicitud');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && ($usuario->esEncargadoArchivo() || $usuario->esTransferencias());
+    }
+
+    public static function canViewAny(): bool
+    {
+        $usuario = User::find(Auth::id());
+        return $usuario !== null && ($usuario->esEncargadoArchivo() || $usuario->esTransferencias());
     }
 
     public static function getPages(): array
