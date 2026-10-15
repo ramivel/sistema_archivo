@@ -710,9 +710,9 @@ class TransferenciaService
                 ->where('activo', true)
                 ->whereNull('fecha_eliminacion')
                 ->firstOrFail();
-            $oficina = $transferencia->usuarioSolicitante?->oficina;
-            $direccion = $transferencia->usuarioSolicitante?->direccion;
-            $area = $transferencia->usuarioSolicitante?->area;
+            $oficina = $transferencia->fondo;
+            $direccion = $transferencia->subfondo;
+            $area = $transferencia?->seccion;
             if (! $oficina || ! $direccion) {
                 throw new \RuntimeException(
                     'El usuario remitente no tiene oficina o dirección configurada.'
