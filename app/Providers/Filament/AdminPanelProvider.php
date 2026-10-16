@@ -44,7 +44,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             // Grupos de navegación
             ->navigationGroups(AdminNavigation::groups())
-            
+
             // Autenticación personalizada
             ->login(Login::class)
             ->userMenuItems([
@@ -71,10 +71,7 @@ class AdminPanelProvider extends PanelProvider
                 in: app_path('Filament/Widgets'),
                 for: 'App\\Filament\\Widgets'
             )
-            ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
-            ])
+            ->widgets([])
             // Middleware
             ->middleware([
                 EncryptCookies::class,
