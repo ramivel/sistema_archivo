@@ -80,7 +80,7 @@ class TransferenciaResource extends Resource
                         SELECT id
                         FROM parametros
                         WHERE grupo = 'ESTADO_TRANSFERENCIA'
-                        AND valor IN ('RECHAZADO', 'ANULADO', 'FINALIZADO')
+                        AND valor IN ('RECHAZADO', 'ANULADO', 'FINALIZADO', 'INVENTARIADO')
                     ) THEN 1
                     ELSE 0
                 END

@@ -2,3 +2,5 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+@import './buscador-inventario.css';

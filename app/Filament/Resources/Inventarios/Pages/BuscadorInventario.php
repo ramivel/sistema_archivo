@@ -34,9 +34,7 @@ class BuscadorInventario extends Page implements HasTable, HasForms
         return $schema
             ->components([
                 Section::make('Filtros')
-                    ->description(
-                        'Seleccione los criterios para realizar la búsqueda documental.'
-                    )
+                    ->description('Seleccione los criterios para realizar la búsqueda documental.')
                     ->schema([
                         Select::make('oficina_parametro_id')
                             ->label('Oficina')
@@ -108,6 +106,11 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 fn (): array =>
                                     self::parametroOptions('SOPORTE')
                             ),
+                        TextInput::make('fechas_extremas')
+                            ->label('Fechas extremas (Año)')
+                            ->numeric()
+                            ->minValue(1000)
+                            ->maxValue(9999),
                         TextInput::make('texto')
                             ->label('Texto a buscar')
                             ->maxLength(255)
@@ -116,19 +119,12 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                             ->label('Campo de búsqueda')
                             ->placeholder('Seleccione un campo')
                             ->options([
-                                'codigo_inventario' =>
-                                    'Código de inventario',
-                                'codigo_referencia' =>
-                                    'Código de referencia',
-                                'numero_caja' =>
-                                    'Número de caja',
-                                'procedencia' =>
-                                    'Procedencia',
-                                'descripcion_lomo' =>
-                                    'Descripción documental',
+                                'codigo_inventario' => 'Código de inventario',
+                                'codigo_referencia' => 'Código de referencia',
+                                'numero_caja' => 'Número de caja',
+                                'procedencia' => 'Procedencia',
+                                'descripcion_lomo' => 'Descripción documental',
                                 'detalle' => 'Detalle',
-                                'fechas_extremas' =>
-                                    'Fechas extremas',
                             ]),
                     ])
                     ->columns(3)
@@ -140,51 +136,33 @@ class BuscadorInventario extends Page implements HasTable, HasForms
     public function buscar(): void
     {
         $filtros = $this->form->getState();
-
-        $camposFiltros = collect($filtros)
-            ->except(['campo', 'texto']);
-
+        $camposFiltros = collect($filtros)->except(['campo', 'texto']);
         $hayFiltroSeleccionado = $camposFiltros
             ->filter(
-                fn ($valor): bool =>
-                    filled($valor)
+                fn ($valor): bool => filled($valor)
             )
             ->isNotEmpty();
-
-        $hayTexto = filled(
-            trim((string) ($filtros['texto'] ?? ''))
-        );
-
+        $hayTexto = filled(trim((string) ($filtros['texto'] ?? '')));
         if (! $hayFiltroSeleccionado && ! $hayTexto) {
             Notification::make()
                 ->warning()
                 ->title('Debe ingresar un criterio de búsqueda')
-                ->body(
-                    'Seleccione al menos un filtro o registre un texto de búsqueda.'
-                )
+                ->body('Seleccione al menos un filtro o registre un texto de búsqueda.')
                 ->send();
-
             $this->busquedaEjecutada = false;
             $this->resetTable();
-
             return;
         }
-
         if ($hayTexto && blank($filtros['campo'] ?? null)) {
             Notification::make()
                 ->warning()
                 ->title('Seleccione el campo de búsqueda')
-                ->body(
-                    'Debe indicar dónde desea realizar la búsqueda.'
-                )
+                ->body('Debe indicar dónde desea realizar la búsqueda.')
                 ->send();
-
             $this->busquedaEjecutada = false;
             $this->resetTable();
-
             return;
         }
-
         $this->filtros = $filtros;
         $this->busquedaEjecutada = true;
         $this->resetTable();
@@ -207,9 +185,8 @@ class BuscadorInventario extends Page implements HasTable, HasForms
         );
     }
 
-    private static function parametroOptions(
-        string $grupo
-    ): array {
+    private static function parametroOptions(string $grupo): array
+    {
         return Parametro::query()
             ->where('grupo', $grupo)
             ->where('activo', true)

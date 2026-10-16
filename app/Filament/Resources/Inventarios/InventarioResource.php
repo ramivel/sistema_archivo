@@ -35,20 +35,6 @@ class InventarioResource extends Resource
         }
         $items = [];
         $rutaBase = static::getRouteBaseName();
-        if ($usuario->esEncargadoArchivo()) {
-            $items[] = NavigationItem::make('Inventario general')
-                ->key(static::class . '.index')
-                ->group(static::getNavigationGroup())
-                ->icon('heroicon-o-archive-box')
-                ->isActiveWhen(
-                    fn (): bool =>
-                        request()->routeIs($rutaBase . '.index')
-                )
-                ->url(
-                    fn (): string =>
-                        static::getUrl('index')
-                );
-        }
         if ($usuario->esEncargadoArchivo() || $usuario->esConsultas()) {
             $items[] = NavigationItem::make('Buscador documental')
                 ->key(static::class . '.buscador')
@@ -61,6 +47,20 @@ class InventarioResource extends Resource
                 ->url(
                     fn (): string =>
                         static::getUrl('buscador')
+                );
+        }
+        if ($usuario->esEncargadoArchivo()) {
+            $items[] = NavigationItem::make('Inventario general')
+                ->key(static::class . '.index')
+                ->group(static::getNavigationGroup())
+                ->icon('heroicon-o-archive-box')
+                ->isActiveWhen(
+                    fn (): bool =>
+                        request()->routeIs($rutaBase . '.index')
+                )
+                ->url(
+                    fn (): string =>
+                        static::getUrl('index')
                 );
         }
         return $items;

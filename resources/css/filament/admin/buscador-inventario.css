@@ -1,0 +1,19 @@
+/* Tabla de resultados del buscador documental */
+
+/* Encabezados */
+.buscador-inventario-tabla .fi-ta-header-cell,
+.buscador-inventario-tabla .fi-ta-header-cell * {
+    font-size: 10px !important;
+}
+
+/* Celdas del cuerpo */
+.buscador-inventario-tabla .fi-ta-cell,
+.buscador-inventario-tabla .fi-ta-cell * {
+    font-size: 10px !important;
+}
+
+/* Paginación */
+.buscador-inventario-tabla .fi-pagination,
+.buscador-inventario-tabla .fi-pagination * {
+    font-size: 10px !important;
+}

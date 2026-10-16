@@ -28,7 +28,7 @@
         </div>
     </form>
 
-    <div class="mt-6">
+    <div class="mt-4 buscador-inventario-tabla">
         {{ $this->table }}
     </div>
 </x-filament-panels::page>

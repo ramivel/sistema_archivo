@@ -39,28 +39,15 @@ class BuscadorInventarioTable
                     ->alignCenter(),
                 Tables\Columns\TextColumn::make('codigo_referencia')
                     ->label('CÓDIGO REFERENCIA'),
-                Tables\Columns\TextColumn::make('procedencia')
-                    ->label('PROCEDENCIA')
-                    ->limit(30),
-                Tables\Columns\TextColumn::make(
-                    'serieDocumental.valor'
-                )
-                    ->label('SERIE DOCUMENTAL'),
                 Tables\Columns\TextColumn::make('descripcion_lomo')
                     ->label('DESCRIPCIÓN DOCUMENTAL')
                     ->limit(60),
-                Tables\Columns\TextColumn::make('detalle')
-                    ->label('DETALLE')
-                    ->limit(60),
-                Tables\Columns\TextColumn::make('tomo_volumen')
-                    ->label('TOMO')
-                    ->alignCenter(),
-
+                Tables\Columns\TextColumn::make('procedencia')
+                    ->label('PROCEDENCIA')
+                    ->limit(30),
                 Tables\Columns\TextColumn::make('fechas_extremas')
                     ->label('FECHAS EXTREMAS')
                     ->alignCenter(),
-                Tables\Columns\TextColumn::make('soporte.valor')
-                    ->label('SOPORTE'),
             ])
             ->recordActions([
                 self::verAction(),
@@ -88,11 +75,9 @@ class BuscadorInventarioTable
                 'soporte',
                 'estado',
             ]);
-
         if (! $busquedaEjecutada) {
             return $query->whereRaw('1 = 0');
         }
-
         foreach ([
             'oficina_parametro_id',
             'direccion_parametro_id',
@@ -104,10 +89,15 @@ class BuscadorInventarioTable
                 $query->where($campo, $filtros[$campo]);
             }
         }
-
+        if (filled($filtros['fechas_extremas'] ?? null)) {
+            $query->where(
+                'fechas_extremas',
+                'ILIKE',
+                '%' . $filtros['fechas_extremas'] . '%'
+            );
+        }
         $campo = $filtros['campo'] ?? null;
         $texto = trim((string) ($filtros['texto'] ?? ''));
-
         $camposPermitidos = [
             'codigo_inventario',
             'codigo_referencia',
@@ -115,24 +105,17 @@ class BuscadorInventarioTable
             'procedencia',
             'descripcion_lomo',
             'detalle',
-            'fechas_extremas',
         ];
-
-        if (
-            filled($texto)
-            && in_array($campo, $camposPermitidos, true)
-        ) {
+        if (filled($texto) && in_array($campo, $camposPermitidos, true)) {
             $columna = $query
                 ->getQuery()
                 ->getGrammar()
                 ->wrap($campo);
-
             $query->whereRaw(
                 "unaccent(UPPER({$columna})) ILIKE unaccent(?)",
                 ["%{$texto}%"]
             );
         }
-
         return $query;
     }
 
@@ -151,77 +134,66 @@ class BuscadorInventarioTable
                                 fn (InventarioExpediente $record): string =>
                                     $record->codigo_inventario
                             ),
-
                         TextEntry::make('estado')
                             ->label('Estado')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->estado?->valor ?? '—'
                             ),
-
                         TextEntry::make('origen')
                             ->label('Origen')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->origen ?? '—'
                             ),
-
                         TextEntry::make('oficina')
                             ->label('Oficina')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->oficina?->valor ?? '—'
                             ),
-
                         TextEntry::make('direccion')
                             ->label('Dirección')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->direccion?->valor ?? '—'
                             ),
-
                         TextEntry::make('area')
                             ->label('Área')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->area?->valor ?? '—'
                             ),
-
                         TextEntry::make('numero_caja')
                             ->label('Número de caja')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->numero_caja ?? '—'
                             ),
-
                         TextEntry::make('codigo_referencia')
                             ->label('Código de referencia')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->codigo_referencia
                             ),
-
                         TextEntry::make('procedencia')
                             ->label('Procedencia')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->procedencia
                             ),
-
                         TextEntry::make('serie_documental')
                             ->label('Serie documental')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->serieDocumental?->valor ?? '—'
                             ),
-
                         TextEntry::make('soporte')
                             ->label('Soporte')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->soporte?->valor ?? '—'
                             ),
-
                         TextEntry::make('tomo_volumen')
                             ->label('Tomo / volumen')
                             ->state(
@@ -230,21 +202,18 @@ class BuscadorInventarioTable
                                         $record->tomo_volumen ?? '—'
                                     )
                             ),
-
                         TextEntry::make('fojas')
                             ->label('Fojas')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->fojas ?? '—'
                             ),
-
                         TextEntry::make('fechas_extremas')
                             ->label('Fechas extremas')
                             ->state(
                                 fn (InventarioExpediente $record): string =>
                                     $record->fechas_extremas ?? '—'
                             ),
-
                         TextEntry::make('descripcion_lomo')
                             ->label('Descripción documental')
                             ->state(
@@ -252,7 +221,6 @@ class BuscadorInventarioTable
                                     $record->descripcion_lomo ?? '—'
                             )
                             ->columnSpanFull(),
-
                         TextEntry::make('detalle')
                             ->label('Detalle')
                             ->state(
@@ -260,7 +228,6 @@ class BuscadorInventarioTable
                                     $record->detalle ?? '—'
                             )
                             ->columnSpanFull(),
-
                         TextEntry::make('observaciones')
                             ->label('Observaciones')
                             ->state(
