@@ -14,6 +14,9 @@
                         <x-filament::button tag="a" color="success" icon="heroicon-o-document-arrow-down" :href="$this->urlImprimirReporte()" target="_blank">
                             Imprimir reporte PDF
                         </x-filament::button>
+                        <x-filament::button tag="a" color="success" icon="heroicon-o-table-cells" :href="$this->urlDescargarReporteExcel()">
+                            Descargar Reporte Excel
+                        </x-filament::button>
                     @endif
                 </div>
             </form>

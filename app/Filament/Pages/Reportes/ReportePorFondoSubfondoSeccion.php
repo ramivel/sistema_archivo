@@ -174,11 +174,24 @@ class ReportePorFondoSubfondoSeccion extends Page implements HasForms, HasTable
             'oficina_parametro_id' => $this->filtros['oficina_parametro_id']
                 ?? $this->filtros['fondo_parametro_id']
                 ?? null,
-
             'direccion_parametro_id' => $this->filtros['direccion_parametro_id']
                 ?? $this->filtros['subfondo_parametro_id']
                 ?? null,
+            'area_parametro_id' => $this->filtros['area_parametro_id']
+                ?? $this->filtros['seccion_parametro_id']
+                ?? null,
+        ], fn ($valor) => $valor !== null && $valor !== ''));
+    }
 
+    public function urlDescargarReporteExcel(): string
+    {
+        return route('reportes.inventario.excel', array_filter([
+            'oficina_parametro_id' => $this->filtros['oficina_parametro_id']
+                ?? $this->filtros['fondo_parametro_id']
+                ?? null,
+            'direccion_parametro_id' => $this->filtros['direccion_parametro_id']
+                ?? $this->filtros['subfondo_parametro_id']
+                ?? null,
             'area_parametro_id' => $this->filtros['area_parametro_id']
                 ?? $this->filtros['seccion_parametro_id']
                 ?? null,

@@ -7,6 +7,7 @@ use App\Models\Transferencia;
 use App\Models\InventarioExpediente;
 use Illuminate\Http\Request;
 use App\Services\TransferenciaPdfService;
+use App\Services\ReporteInventarioExcelService;
 
 Route::get('/', function () {
     return redirect('/admin');
@@ -108,3 +109,22 @@ Route::middleware('auth')->get(
         );
     }
 )->name('reportes.inventario.pdf');
+
+Route::middleware('auth')->get(
+    '/reportes/inventario/excel',
+    function (
+        Request $request,
+        ReporteInventarioExcelService $service
+    ) {
+        $ruta = $service->generar(
+            $request->only([
+                'oficina_parametro_id',
+                'direccion_parametro_id',
+                'area_parametro_id',
+            ])
+        );
+        return response()
+            ->download($ruta, 'reporte_inventario.xlsx')
+            ->deleteFileAfterSend(true);
+    }
+)->name('reportes.inventario.excel');
