@@ -10,6 +10,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
 class ReporteInventarioExcelService
 {
@@ -28,6 +29,9 @@ class ReporteInventarioExcelService
         'FECHAS EXTREMAS',
         'SOPORTE',
         'OBSERVACIONES',
+        'FONDO',
+        'SUB FONDO',
+        'SECCIÓN',
     ];
     private const ANCHOS_COLUMNAS = [
         'A' => 18,
@@ -43,6 +47,9 @@ class ReporteInventarioExcelService
         'K' => 20,
         'L' => 18,
         'M' => 45,
+        'N' => 28,
+        'O' => 28,
+        'P' => 28,
     ];
 
     public function generar(array $filtros): string
@@ -82,7 +89,7 @@ class ReporteInventarioExcelService
         $spreadsheet = new Spreadsheet();
         $hoja = $spreadsheet->getActiveSheet();
         $hoja->setTitle('Reporte');
-        $ultimaColumna = 'M';
+        $ultimaColumna = 'P';
         $hoja->mergeCells("A1:{$ultimaColumna}1");
         $hoja->mergeCells("A2:{$ultimaColumna}2");
         $hoja->setCellValue('A1', self::TITULO);
@@ -184,6 +191,9 @@ class ReporteInventarioExcelService
                     $expediente->fechas_extremas ?? '-',
                     $expediente->soporte?->valor ?? '-',
                     $expediente->observaciones ?? '-',
+                    $expediente->oficina?->valor ?? '-',
+                    $expediente->direccion?->valor ?? '-',
+                    $expediente->area?->valor ?? '-',
                 ];
                 foreach ($datos as $indice => $valor) {
                     $columna = chr(ord('A') + $indice);
@@ -219,18 +229,10 @@ class ReporteInventarioExcelService
             $hoja->getColumnDimension($columna)->setWidth($ancho);
         }
         $hoja->freezePane('A5');
-        $hoja->getPageSetup()
-            ->setOrientation(
-                \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE
-            );
-        $hoja->getPageSetup()
-            ->setPaperSize(
-                \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_LETTER
-            );
-        $nombreArchivo = 'reporte_inventario.xlsx';
-        $rutaTemporal = storage_path(
-            "app/private/reportes/{$nombreArchivo}"
-        );
+        $hoja->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+        $hoja->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_LETTER);
+        $nombreArchivo = "reporte_inventario_".date('Ymd_His').".xlsx";
+        $rutaTemporal = storage_path("app/private/reportes/{$nombreArchivo}");
         $directorio = dirname($rutaTemporal);
         if (! is_dir($directorio)) {
             mkdir($directorio, 0755, true);

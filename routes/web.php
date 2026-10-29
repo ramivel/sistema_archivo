@@ -124,7 +124,7 @@ Route::middleware('auth')->get(
             ])
         );
         return response()
-            ->download($ruta, 'reporte_inventario.xlsx')
+            ->download($ruta, basename($ruta))
             ->deleteFileAfterSend(true);
     }
 )->name('reportes.inventario.excel');
