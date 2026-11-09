@@ -89,6 +89,12 @@ class BuscadorInventarioTable
                 $query->where($campo, $filtros[$campo]);
             }
         }
+        if (filled($filtros['procedencia'] ?? null)) {
+            $query->whereRaw(
+                "unaccent(UPPER(procedencia)) ILIKE unaccent(?)",
+                ['%' . mb_strtoupper($filtros['procedencia']) . '%']
+            );
+        }
         if (filled($filtros['fechas_extremas'] ?? null)) {
             $query->where(
                 'fechas_extremas',
@@ -102,7 +108,6 @@ class BuscadorInventarioTable
             'codigo_inventario',
             'codigo_referencia',
             'numero_caja',
-            'procedencia',
             'descripcion_lomo',
             'detalle',
         ];

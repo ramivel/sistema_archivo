@@ -26,6 +26,7 @@ class BuscadorInventario extends Page implements HasTable, HasForms
     use InteractsWithForms;
     protected static string $resource = InventarioResource::class;
     protected string $view = 'filament.resources.inventarios.pages.buscador-inventario';
+    protected static ?string $title = 'Buscador Expedientes (Inventario General)';
     public array $filtros = [];
     public bool $busquedaEjecutada = false;
 
@@ -37,7 +38,7 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                     ->description('Seleccione los criterios para realizar la búsqueda documental.')
                     ->schema([
                         Select::make('oficina_parametro_id')
-                            ->label('Oficina')
+                            ->label('Fondo (Oficina)')
                             ->placeholder('TODAS')
                             ->live()
                             ->options(fn () => Parametro::query()
@@ -52,7 +53,7 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 $set('area_parametro_id', null);
                             }),
                         Select::make('direccion_parametro_id')
-                            ->label('Dirección')
+                            ->label('Sub Fondo (Dirección)')
                             ->placeholder('TODAS')
                             ->live()
                             ->options(function (Get $get): array {
@@ -73,7 +74,7 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 $set('area_parametro_id', null);
                             }),
                         Select::make('area_parametro_id')
-                            ->label('Área')
+                            ->label('Sección (Área)')
                             ->placeholder('TODAS')
                             ->live()
                             ->options(function (Get $get): array {
@@ -90,6 +91,9 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                     ->pluck('valor', 'id')
                                     ->toArray();
                             }),
+                        TextInput::make('procedencia')
+                            ->label('Procedencia')
+                            ->placeholder('TODAS'),
                         Select::make('serie_documental_parametro_id')
                             ->label('Serie documental')
                             ->placeholder('TODAS')
@@ -106,15 +110,9 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 fn (): array =>
                                     self::parametroOptions('SOPORTE')
                             ),
-                        TextInput::make('fechas_extremas')
-                            ->label('Fechas extremas (Año)')
-                            ->numeric()
-                            ->minValue(1000)
-                            ->maxValue(9999),
                         TextInput::make('texto')
                             ->label('Texto a buscar')
-                            ->maxLength(255)
-                            ->columnSpan(2),
+                            ->maxLength(255),
                         Select::make('campo')
                             ->label('Campo de búsqueda')
                             ->placeholder('Seleccione un campo')
@@ -122,10 +120,14 @@ class BuscadorInventario extends Page implements HasTable, HasForms
                                 'codigo_inventario' => 'Código de inventario',
                                 'codigo_referencia' => 'Código de referencia',
                                 'numero_caja' => 'Número de caja',
-                                'procedencia' => 'Procedencia',
                                 'descripcion_lomo' => 'Descripción documental',
                                 'detalle' => 'Detalle',
                             ]),
+                        TextInput::make('fechas_extremas')
+                            ->label('Fechas extremas (Año)')
+                            ->numeric()
+                            ->minValue(1000)
+                            ->maxValue(9999),
                     ])
                     ->columns(3)
                     ->columnSpanFull(),
